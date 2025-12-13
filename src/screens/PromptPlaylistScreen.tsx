@@ -38,6 +38,34 @@ const toneOptions: { value: PlaylistTone; label: string; icon: keyof typeof Ioni
 
 const lengthOptions = [5, 10, 15, 20, 30, 45, 60];
 
+// Biblical prayers - no AI generation needed for prayer mode
+const BIBLICAL_PRAYERS: GeneratedPlaylistPlan = {
+  title: "Prayers from Scripture",
+  references: [
+    "Matthew 6:9-13", // The Lord's Prayer
+    "Luke 11:2-4", // The Lord's Prayer (Luke's version)
+    "Psalm 23", // The Lord is my Shepherd
+    "Psalm 51", // David's prayer of repentance
+    "Psalm 63", // David's prayer of longing for God
+    "Psalm 91", // Prayer of protection
+    "Psalm 139:1-18", // David's prayer of wonder
+    "1 Chronicles 29:10-13", // David's prayer of praise
+    "2 Chronicles 20:6-12", // Jehoshaphat's prayer
+    "Daniel 9:4-19", // Daniel's prayer of confession
+    "1 Samuel 2:1-10", // Hannah's prayer of thanksgiving
+    "John 17:1-26", // Jesus' High Priestly Prayer
+    "Ephesians 3:14-21", // Paul's prayer for the church
+    "Colossians 1:9-14", // Paul's prayer for spiritual wisdom
+    "Philippians 1:9-11", // Paul's prayer for love
+  ],
+  explanation: [
+    "The Lord's Prayer - Jesus taught His disciples how to pray",
+    "Psalms of David - heartfelt prayers of worship, repentance, and trust",
+    "Prayers of faith - Daniel, Hannah, and Jehoshaphat crying out to God",
+    "Apostolic prayers - Paul and Jesus praying for believers",
+  ],
+};
+
 export default function PromptPlaylistScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
@@ -78,6 +106,11 @@ export default function PromptPlaylistScreen() {
     if (defaults) {
       setSelectedTones(defaults.tones);
       setTargetLength(defaults.length);
+    }
+    // For prayer mode, skip to review with biblical prayers
+    if (mode === "prayer") {
+      setGeneratedPlan(BIBLICAL_PRAYERS);
+      setStep("review");
     }
   }, [mode]);
 
@@ -159,6 +192,8 @@ export default function PromptPlaylistScreen() {
   };
 
   if (step === "review" && generatedPlan) {
+    const isPrayerMode = mode === "prayer";
+
     return (
       <View className="flex-1 bg-neutral-950">
         {/* Header */}
@@ -166,10 +201,12 @@ export default function PromptPlaylistScreen() {
           style={{ paddingTop: insets.top + 8 }}
           className="px-5 pb-4 flex-row items-center justify-between border-b border-neutral-800"
         >
-          <Pressable onPress={handleRegenerate} hitSlop={8}>
-            <Ionicons name="arrow-back" size={24} color="#9ca3af" />
+          <Pressable onPress={isPrayerMode ? () => navigation.goBack() : handleRegenerate} hitSlop={8}>
+            <Ionicons name={isPrayerMode ? "close" : "arrow-back"} size={24} color="#9ca3af" />
           </Pressable>
-          <Text className="text-white text-lg font-semibold">Review Playlist</Text>
+          <Text className="text-white text-lg font-semibold">
+            {isPrayerMode ? "Biblical Prayers" : "Review Playlist"}
+          </Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -228,27 +265,43 @@ export default function PromptPlaylistScreen() {
           className="px-5 py-4 border-t border-neutral-800"
           style={{ paddingBottom: insets.bottom + 16 }}
         >
-          <View className="flex-row gap-3">
-            <Pressable
-              onPress={handleRegenerate}
-              className="flex-1 py-4 rounded-xl items-center bg-neutral-800"
-            >
-              <Text className="text-white font-semibold">Regenerate</Text>
-            </Pressable>
+          {isPrayerMode ? (
             <Pressable
               onPress={handleCreateFromPlan}
               disabled={isLoading}
-              className={`flex-1 py-4 rounded-xl items-center ${
+              className={`py-4 rounded-xl items-center ${
                 isLoading ? "bg-indigo-500/50" : "bg-indigo-500"
               }`}
             >
               {isLoading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text className="text-white font-semibold">Create</Text>
+                <Text className="text-white font-semibold text-lg">Create Prayer Playlist</Text>
               )}
             </Pressable>
-          </View>
+          ) : (
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={handleRegenerate}
+                className="flex-1 py-4 rounded-xl items-center bg-neutral-800"
+              >
+                <Text className="text-white font-semibold">Regenerate</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleCreateFromPlan}
+                disabled={isLoading}
+                className={`flex-1 py-4 rounded-xl items-center ${
+                  isLoading ? "bg-indigo-500/50" : "bg-indigo-500"
+                }`}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-white font-semibold">Create</Text>
+                )}
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
     );

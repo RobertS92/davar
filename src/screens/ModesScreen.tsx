@@ -75,18 +75,18 @@ const modes: ModeConfig[] = [
   {
     id: "prayer",
     title: "Prayer Loop",
-    subtitle: "Meditate on Scripture",
+    subtitle: "Biblical prayers for meditation",
     icon: "heart",
     colors: ["#ec4899", "#db2777"] as const,
-    description: "Loop selected passages for extended prayer and meditation sessions.",
+    description: "Prayers from Scripture including the Lord's Prayer, Psalms, and prayers of biblical figures.",
     features: [
-      "Continuous loop playback",
-      "Silent pauses between loops",
-      "3-10 passage selection",
-      "Set duration timer",
+      "The Lord's Prayer",
+      "Prayers from the Psalms",
+      "Biblical prayers only",
+      "Loop for meditation",
     ],
     defaultLength: 15,
-    topics: ["prayer", "worship", "gratitude", "surrender"],
+    topics: ["prayer", "worship", "psalms", "meditation"],
   },
 ];
 
