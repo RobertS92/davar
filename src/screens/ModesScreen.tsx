@@ -5,6 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
 
@@ -111,6 +112,67 @@ export default function ModesScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Deep Dive Study - Featured */}
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            navigation.navigate("DeepDiveStudy");
+          }}
+          className="mb-6 overflow-hidden rounded-2xl active:opacity-90"
+        >
+          <LinearGradient
+            colors={["#0f172a", "#1e293b"] as const}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ padding: 20, borderWidth: 1, borderColor: "#6366f1", borderRadius: 16 }}
+          >
+            <View className="flex-row items-center mb-3">
+              <View className="bg-indigo-500/20 px-3 py-1 rounded-full">
+                <Text className="text-indigo-400 text-xs font-semibold uppercase tracking-wider">Featured</Text>
+              </View>
+              <View className="bg-indigo-500/20 px-3 py-1 rounded-full ml-2">
+                <Text className="text-indigo-400 text-xs font-semibold">90+ min</Text>
+              </View>
+            </View>
+
+            <View className="flex-row items-center">
+              <View className="w-14 h-14 rounded-2xl bg-indigo-500/20 items-center justify-center mr-4">
+                <Ionicons name="school" size={28} color="#6366f1" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-white text-2xl font-bold">Deep Dive Study</Text>
+                <Text className="text-neutral-400 mt-1">Extended study sessions</Text>
+              </View>
+            </View>
+
+            <Text className="text-neutral-300 mt-4 leading-5">
+              Comprehensive 60-120 minute playlists featuring precepts, chapter ranges, stories, and full books for serious Bible study.
+            </Text>
+
+            <View className="flex-row items-center mt-4 flex-wrap gap-2">
+              {["Precepts", "Stories", "Chapters", "Books"].map((tag) => (
+                <View key={tag} className="bg-indigo-500/10 border border-indigo-500/30 px-3 py-1 rounded-full">
+                  <Text className="text-indigo-300 text-xs">{tag}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View className="flex-row items-center justify-between mt-5 pt-4 border-t border-neutral-700">
+              <Text className="text-indigo-400 font-medium">
+                12 study topics available
+              </Text>
+              <View className="bg-indigo-500 w-10 h-10 rounded-full items-center justify-center">
+                <Ionicons name="arrow-forward" size={20} color="white" />
+              </View>
+            </View>
+          </LinearGradient>
+        </Pressable>
+
+        {/* Quick Modes Section */}
+        <Text className="text-neutral-500 text-sm font-medium uppercase tracking-wider mb-4">
+          Quick Modes
+        </Text>
+
         {modes.map((mode) => (
           <Pressable
             key={mode.id}

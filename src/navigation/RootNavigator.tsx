@@ -16,6 +16,7 @@ import SettingsScreen from "../screens/SettingsScreen";
 import OnboardingScreen from "../screens/OnboardingScreen";
 import ModesScreen from "../screens/ModesScreen";
 import EditPlaylistScreen from "../screens/EditPlaylistScreen";
+import DeepDiveStudyScreen from "../screens/DeepDiveStudyScreen";
 
 // Store
 import { usePreferencesStore } from "../state/preferencesStore";
@@ -31,6 +32,7 @@ export type RootStackParamList = {
   Settings: undefined;
   Modes: undefined;
   EditPlaylist: { playlistId: string };
+  DeepDiveStudy: undefined;
 };
 
 export type TabParamList = {
@@ -145,6 +147,11 @@ export default function RootNavigator() {
       <Stack.Screen
         name="EditPlaylist"
         component={EditPlaylistScreen}
+        options={{ presentation: "modal" }}
+      />
+      <Stack.Screen
+        name="DeepDiveStudy"
+        component={DeepDiveStudyScreen}
         options={{ presentation: "modal" }}
       />
     </Stack.Navigator>

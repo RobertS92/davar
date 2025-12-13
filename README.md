@@ -41,6 +41,28 @@ Tap a topic to instantly generate a Scripture playlist with AI voice narration:
 - **Study**: Verse numbers spoken, focused passages
 - **Prayer Loop**: Loop selected passages for meditation
 
+### Deep Dive Study (NEW)
+Extended 60-120 minute study sessions with comprehensive content:
+- **Study Types**:
+  - Precepts: Key verses and teachings
+  - Stories: Narrative passages (e.g., Abraham, David, Joseph)
+  - Chapters: Full chapter studies
+  - Books: Complete book studies
+  - Mixed: Combination of all types
+- **12 Study Topics**:
+  - Faith & Trust
+  - Salvation
+  - Holiness & Purity
+  - Wisdom
+  - Prayer
+  - Spiritual Warfare
+  - Love of God
+  - Kingdom of God
+  - Obedience
+  - Suffering & Trials
+  - Identity in Christ
+  - Promises of God
+
 ### Library & Organization
 - Save and favorite playlists
 - Recent playlists
@@ -71,6 +93,7 @@ src/
 │   ├── bibleData.ts        # Bible text data
 │   ├── playlistCompiler.ts # Compile playlists
 │   ├── playlistGenerator.ts # AI generation
+│   ├── deepDiveGenerator.ts # Deep dive study generation
 │   └── ttsService.ts       # OpenAI TTS audio generation
 ├── state/            # Zustand stores
 │   ├── preferencesStore.ts
