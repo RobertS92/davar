@@ -171,11 +171,19 @@ export default function ListenModeScreen() {
 
       // Load and play the audio
       console.log("Creating audio sound...");
-      const { sound } = await Audio.Sound.createAsync(
+      const { sound, status } = await Audio.Sound.createAsync(
         { uri: result.audioUri },
         { shouldPlay: true },
         onPlaybackStatusUpdate
       );
+
+      console.log("Sound created, initial status:", JSON.stringify(status));
+
+      // Explicitly call play to ensure playback starts
+      if (status.isLoaded && !status.isPlaying) {
+        console.log("Explicitly calling playAsync...");
+        await sound.playAsync();
+      }
 
       console.log("Sound created successfully, starting playback");
       soundRef.current = sound;
