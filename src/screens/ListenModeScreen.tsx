@@ -59,12 +59,21 @@ export default function ListenModeScreen() {
     }
 
     // Configure audio mode for playback
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      shouldDuckAndroid: true,
-    });
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+        });
+        console.log("Audio mode configured successfully");
+      } catch (err) {
+        console.log("Error configuring audio mode:", err);
+      }
+    };
+
+    setupAudio();
 
     return () => {
       cleanup();
@@ -138,6 +147,7 @@ export default function ListenModeScreen() {
 
     try {
       const text = prepareText();
+      console.log("Preparing to play audio, text length:", text.length);
       const voice = (defaultVoice as TTSVoice) || "nova";
 
       const result = await generatePlaylistItemAudio(
@@ -150,13 +160,24 @@ export default function ListenModeScreen() {
         }
       );
 
+      console.log("Audio generated, URI:", result.audioUri);
+      console.log("Audio duration from TTS:", result.duration);
+
+      // Clean up any existing sound before creating new one
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+
       // Load and play the audio
+      console.log("Creating audio sound...");
       const { sound } = await Audio.Sound.createAsync(
         { uri: result.audioUri },
         { shouldPlay: true },
         onPlaybackStatusUpdate
       );
 
+      console.log("Sound created successfully, starting playback");
       soundRef.current = sound;
       setDuration(result.duration);
       setIsPlaying(true);
