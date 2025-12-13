@@ -35,21 +35,22 @@ function normalizeBookName(input: string): string | null {
 }
 
 /**
+ * Normalize hyphens - replace en-dash, em-dash with regular hyphen
+ */
+function normalizeHyphens(input: string): string {
+  return input.replace(/[–—]/g, "-");
+}
+
+/**
  * Parse a single reference string into a BibleReference object
  */
 function parseSingleReference(input: string): BibleReference | null {
-  const trimmed = input.trim();
+  // Normalize hyphens first
+  const trimmed = normalizeHyphens(input.trim());
   if (!trimmed) return null;
 
-  // Patterns to match:
-  // "John 3:16" - single verse
-  // "John 3:16-18" - verse range within chapter
-  // "John 3:16-4:2" - range across chapters
-  // "Romans 8" - whole chapter
-  // "James" - whole book
-
-  // Pattern for book name (handles numbered books like "1 John")
-  const bookPattern = /^(\d?\s*[a-zA-Z]+(?:\s+[a-zA-Z]+)?)/;
+  // Pattern for book name (handles numbered books like "1 John", "1 Thessalonians")
+  const bookPattern = /^(\d?\s*[a-zA-Z]+(?:\s+[a-zA-Z]+)*)/;
   const bookMatch = trimmed.match(bookPattern);
 
   if (!bookMatch) return null;
@@ -149,25 +150,110 @@ function parseSingleReference(input: string): BibleReference | null {
 }
 
 /**
+ * Split input intelligently, handling comma-separated verses within a reference
+ * e.g., "Psalm 119:9, 11" should become two refs, but "Romans 8, Psalm 23" should also work
+ */
+function smartSplit(input: string): string[] {
+  const results: string[] = [];
+
+  // Normalize hyphens first
+  const normalized = normalizeHyphens(input);
+
+  // Split by newlines first
+  const lines = normalized.split(/\n/).map(line => line.trim()).filter(Boolean);
+
+  for (const line of lines) {
+    // Split by comma
+    const parts = line.split(",").map(p => p.trim()).filter(Boolean);
+
+    let currentBook = "";
+    let currentChapter = "";
+
+    for (const part of parts) {
+      // Check if this part starts with a book name
+      const bookPattern = /^(\d?\s*[a-zA-Z]+(?:\s+[a-zA-Z]+)*)/;
+      const bookMatch = part.match(bookPattern);
+
+      if (bookMatch) {
+        const potentialBook = normalizeBookName(bookMatch[1].trim());
+        if (potentialBook) {
+          // This is a new book reference
+          currentBook = potentialBook;
+          const remainder = part.slice(bookMatch[0].length).trim();
+
+          // Check if there's a chapter
+          const chapterMatch = remainder.match(/^(\d+)/);
+          if (chapterMatch) {
+            currentChapter = chapterMatch[1];
+          } else {
+            currentChapter = "";
+          }
+
+          results.push(part);
+          continue;
+        }
+      }
+
+      // If it's just a number or verse reference, it might be continuing the previous reference
+      const justNumberPattern = /^(\d+)$/;
+      const justVersePattern = /^(\d+):(\d+)(?:-(\d+))?$/;
+      const justVerseNumPattern = /^(\d+)(?:-(\d+))?$/;
+
+      if (currentBook && currentChapter) {
+        // Check if it's just a verse number (continuing same chapter)
+        if (justVerseNumPattern.test(part) && !justNumberPattern.test(part.split("-")[0]) === false) {
+          // It's a verse or verse range in the same chapter
+          if (part.includes(":")) {
+            results.push(`${currentBook} ${part}`);
+          } else {
+            results.push(`${currentBook} ${currentChapter}:${part}`);
+          }
+          continue;
+        }
+      }
+
+      if (currentBook && justNumberPattern.test(part)) {
+        // Could be a chapter number for the same book
+        const num = parseInt(part, 10);
+        if (num < 200) { // Reasonable chapter/verse number
+          if (currentChapter) {
+            // Assume it's a verse in the same chapter
+            results.push(`${currentBook} ${currentChapter}:${part}`);
+          } else {
+            // Assume it's a new chapter
+            results.push(`${currentBook} ${part}`);
+            currentChapter = part;
+          }
+          continue;
+        }
+      }
+
+      // Otherwise, just add as-is
+      results.push(part);
+    }
+  }
+
+  return results;
+}
+
+/**
  * Parse multiple references from input text
  * Supports comma-separated or newline-separated references
+ * Handles complex patterns like "Psalm 119:9, 11" and "Psalm 37:1-10, 23"
  */
 export function parseReferences(input: string): ParseResult {
   const references: BibleReference[] = [];
   const errors: string[] = [];
 
-  // Split by newlines and commas
-  const lines = input
-    .split(/[\n,]/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  // Use smart split to handle complex comma usage
+  const parts = smartSplit(input);
 
-  for (const line of lines) {
-    const ref = parseSingleReference(line);
+  for (const part of parts) {
+    const ref = parseSingleReference(part);
     if (ref) {
       references.push(ref);
     } else {
-      errors.push(`Could not parse: "${line}"`);
+      errors.push(`Could not parse: "${part}"`);
     }
   }
 
