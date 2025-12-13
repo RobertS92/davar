@@ -6,12 +6,13 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Slider from "@react-native-community/slider";
-import * as Speech from "expo-speech";
+import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { usePlaylistStore } from "../state/playlistStore";
 import { usePreferencesStore } from "../state/preferencesStore";
+import { generatePlaylistItemAudio, TTSVoice, VOICE_OPTIONS } from "../services/ttsService";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, "ListenMode">;
@@ -31,14 +32,18 @@ export default function ListenModeScreen() {
   const markPlaylistCompleted = usePlaylistStore((s) => s.markPlaylistCompleted);
 
   const playbackSpeed = usePreferencesStore((s) => s.playbackSpeed);
+  const defaultVoice = usePreferencesStore((s) => s.defaultVoice);
   const speakVerseNumbers = usePreferencesStore((s) => s.speakVerseNumbers);
   const announceBookChapter = usePreferencesStore((s) => s.announceBookChapter);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  const soundRef = useRef<Audio.Sound | null>(null);
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -46,16 +51,30 @@ export default function ListenModeScreen() {
       const index = playlist.items.findIndex((item) => item.id === startFromItem);
       if (index >= 0) setCurrentIndex(index);
     }
+
+    // Configure audio mode for playback
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+      shouldDuckAndroid: true,
+    });
+
+    return () => {
+      cleanup();
+    };
   }, [startFromItem, playlist]);
 
-  useEffect(() => {
-    return () => {
-      Speech.stop();
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-      }
-    };
-  }, []);
+  const cleanup = async () => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+    }
+    if (soundRef.current) {
+      await soundRef.current.stopAsync();
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
+    }
+  };
 
   if (!playlist) {
     return (
@@ -77,10 +96,6 @@ export default function ListenModeScreen() {
   const prepareText = () => {
     let text = "";
 
-    if (announceBookChapter) {
-      text += `${currentItem.title}. `;
-    }
-
     if (speakVerseNumbers) {
       currentItem.verses.forEach((verse) => {
         text += `Verse ${verse.verse}. ${verse.text} `;
@@ -93,8 +108,9 @@ export default function ListenModeScreen() {
   };
 
   const handlePlay = async () => {
-    if (isPlaying) {
-      Speech.stop();
+    if (isPlaying && soundRef.current) {
+      // Pause
+      await soundRef.current.pauseAsync();
       setIsPlaying(false);
       if (progressInterval.current) {
         clearInterval(progressInterval.current);
@@ -102,93 +118,134 @@ export default function ListenModeScreen() {
       return;
     }
 
+    // If we have a paused sound, resume it
+    if (soundRef.current && progress > 0 && progress < 1) {
+      await soundRef.current.playAsync();
+      setIsPlaying(true);
+      startProgressTracking();
+      return;
+    }
+
+    // Generate new audio
     setIsLoading(true);
-    setIsPlaying(true);
+    setError(null);
 
-    const text = prepareText();
-    const estimatedDuration = currentItem.estimatedDuration;
+    try {
+      const text = prepareText();
+      const voice = (defaultVoice as TTSVoice) || "nova";
 
-    // Start progress simulation
-    const startTime = Date.now();
-    const currentProgress = progress;
-
-    progressInterval.current = setInterval(() => {
-      const elapsed = (Date.now() - startTime) / 1000;
-      const newProgress = Math.min(
-        currentProgress + (elapsed / estimatedDuration) * playbackSpeed,
-        1
+      const result = await generatePlaylistItemAudio(
+        currentItem.title,
+        text,
+        {
+          voice,
+          speed: playbackSpeed,
+          announceTitle: announceBookChapter,
+        }
       );
-      setProgress(newProgress);
 
-      if (newProgress >= 1) {
-        if (progressInterval.current) {
-          clearInterval(progressInterval.current);
-        }
-      }
-    }, 100);
+      // Load and play the audio
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: result.audioUri },
+        { shouldPlay: true },
+        onPlaybackStatusUpdate
+      );
 
-    setIsLoading(false);
+      soundRef.current = sound;
+      setDuration(result.duration);
+      setIsPlaying(true);
+      setIsLoading(false);
 
-    Speech.speak(text, {
-      rate: playbackSpeed,
-      onDone: () => {
+      startProgressTracking();
+
+    } catch (err) {
+      console.log("TTS error:", err);
+      setError("Failed to generate audio. Please try again.");
+      setIsLoading(false);
+      setIsPlaying(false);
+    }
+  };
+
+  const onPlaybackStatusUpdate = (status: any) => {
+    if (status.isLoaded) {
+      if (status.didJustFinish) {
         setIsPlaying(false);
+        setProgress(1);
         if (progressInterval.current) {
           clearInterval(progressInterval.current);
         }
-        setProgress(1);
 
         // Auto-advance to next track
         if (currentIndex < totalItems - 1) {
           setTimeout(() => {
             handleNext();
-          }, 1000);
+          }, 1500);
         } else {
           markPlaylistCompleted(playlistId);
         }
-      },
-      onStopped: () => {
-        setIsPlaying(false);
-        if (progressInterval.current) {
-          clearInterval(progressInterval.current);
-        }
-      },
-      onError: () => {
-        setIsPlaying(false);
-        setIsLoading(false);
-        if (progressInterval.current) {
-          clearInterval(progressInterval.current);
-        }
-      },
-    });
-
-    updatePlaybackProgress(playlistId, currentItem.id, progress * estimatedDuration);
+      }
+    }
   };
 
-  const handlePrevious = () => {
+  const startProgressTracking = () => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+    }
+
+    progressInterval.current = setInterval(async () => {
+      if (soundRef.current) {
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded && status.durationMillis) {
+          const currentProgress = status.positionMillis / status.durationMillis;
+          setProgress(currentProgress);
+          setDuration(status.durationMillis / 1000);
+
+          updatePlaybackProgress(
+            playlistId,
+            currentItem.id,
+            status.positionMillis / 1000
+          );
+        }
+      }
+    }, 250);
+  };
+
+  const handleSeek = async (value: number) => {
+    if (soundRef.current && duration > 0) {
+      const positionMs = value * duration * 1000;
+      await soundRef.current.setPositionAsync(positionMs);
+      setProgress(value);
+    }
+  };
+
+  const handlePrevious = async () => {
     if (currentIndex > 0) {
-      Speech.stop();
+      await cleanup();
       setIsPlaying(false);
       setProgress(0);
+      setDuration(0);
       setCurrentIndex(currentIndex - 1);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < totalItems - 1) {
-      Speech.stop();
+      await cleanup();
       setIsPlaying(false);
       setProgress(0);
+      setDuration(0);
       setCurrentIndex(currentIndex + 1);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
-  const handleClose = () => {
-    Speech.stop();
+  const handleClose = async () => {
+    await cleanup();
     navigation.goBack();
   };
+
+  const currentVoice = VOICE_OPTIONS.find((v) => v.id === defaultVoice) || VOICE_OPTIONS[4];
 
   return (
     <View className="flex-1 bg-neutral-950">
@@ -224,12 +281,30 @@ export default function ListenModeScreen() {
             className="rounded-3xl bg-white/10 items-center justify-center"
             style={{ width: width - 80, height: width - 80 }}
           >
-            <Ionicons name="book" size={120} color="rgba(255,255,255,0.3)" />
-            <Text className="text-white/50 text-lg mt-4">
-              {currentIndex + 1} of {totalItems}
-            </Text>
+            {isLoading ? (
+              <>
+                <ActivityIndicator color="white" size="large" />
+                <Text className="text-white/70 text-base mt-4">
+                  Generating audio...
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="book" size={100} color="rgba(255,255,255,0.3)" />
+                <Text className="text-white/50 text-lg mt-4">
+                  {currentIndex + 1} of {totalItems}
+                </Text>
+              </>
+            )}
           </View>
         </View>
+
+        {/* Error Message */}
+        {error && (
+          <View className="mx-8 mb-4 bg-red-500/20 rounded-xl p-3">
+            <Text className="text-red-300 text-center">{error}</Text>
+          </View>
+        )}
 
         {/* Track Info */}
         <View className="px-8">
@@ -237,7 +312,7 @@ export default function ListenModeScreen() {
             {currentItem.title}
           </Text>
           <Text className="text-white/60 text-center mt-2">
-            {playlist.translation} • {formatTime(currentItem.estimatedDuration)}
+            {playlist.translation} • {currentVoice.name} voice
           </Text>
         </View>
 
@@ -245,7 +320,7 @@ export default function ListenModeScreen() {
         <View className="px-8 mt-8">
           <Slider
             value={progress}
-            onValueChange={(value) => setProgress(value)}
+            onSlidingComplete={handleSeek}
             minimumValue={0}
             maximumValue={1}
             minimumTrackTintColor="#6366f1"
@@ -254,10 +329,10 @@ export default function ListenModeScreen() {
           />
           <View className="flex-row justify-between mt-1">
             <Text className="text-white/50 text-sm">
-              {formatTime(progress * currentItem.estimatedDuration)}
+              {formatTime(progress * (duration || currentItem.estimatedDuration))}
             </Text>
             <Text className="text-white/50 text-sm">
-              {formatTime(currentItem.estimatedDuration)}
+              {formatTime(duration || currentItem.estimatedDuration)}
             </Text>
           </View>
         </View>
@@ -277,6 +352,7 @@ export default function ListenModeScreen() {
 
           <Pressable
             onPress={handlePlay}
+            disabled={isLoading}
             className="w-20 h-20 rounded-full bg-white items-center justify-center"
           >
             {isLoading ? (

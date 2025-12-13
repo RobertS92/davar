@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, Pressable, Switch, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, Switch } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -8,7 +8,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { usePreferencesStore } from "../state/preferencesStore";
 import { usePlaylistStore } from "../state/playlistStore";
-import { Translation, ConsumptionMode, PlaybackSpeed, PauseStyle } from "../types/bible";
+import { Translation, PlaybackSpeed, PauseStyle } from "../types/bible";
+import { VOICE_OPTIONS, TTSVoice } from "../services/ttsService";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -22,6 +23,7 @@ export default function SettingsScreen() {
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [showSpeedPicker, setShowSpeedPicker] = useState(false);
   const [showPausePicker, setShowPausePicker] = useState(false);
+  const [showVoicePicker, setShowVoicePicker] = useState(false);
 
   const translations: { value: Translation; label: string }[] = [
     { value: "KJV", label: "King James Version" },
@@ -35,6 +37,8 @@ export default function SettingsScreen() {
     { value: "medium", label: "Medium pauses" },
     { value: "long", label: "Long pauses" },
   ];
+
+  const currentVoice = VOICE_OPTIONS.find((v) => v.id === preferences.defaultVoice) || VOICE_OPTIONS[4];
 
   const renderPickerModal = (
     visible: boolean,
@@ -70,12 +74,14 @@ export default function SettingsScreen() {
     icon,
     title,
     value,
+    subtitle,
     onPress,
     showChevron = true,
   }: {
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
     value?: string;
+    subtitle?: string;
     onPress?: () => void;
     showChevron?: boolean;
   }) => (
@@ -86,7 +92,10 @@ export default function SettingsScreen() {
       <View className="w-10 h-10 rounded-lg bg-neutral-800 items-center justify-center mr-3">
         <Ionicons name={icon} size={20} color="#6366f1" />
       </View>
-      <Text className="flex-1 text-white text-base">{title}</Text>
+      <View className="flex-1">
+        <Text className="text-white text-base">{title}</Text>
+        {subtitle && <Text className="text-neutral-500 text-sm mt-0.5">{subtitle}</Text>}
+      </View>
       {value && <Text className="text-neutral-400 mr-2">{value}</Text>}
       {showChevron && <Ionicons name="chevron-forward" size={20} color="#6b7280" />}
     </Pressable>
@@ -133,8 +142,22 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Playback Settings */}
+        {/* Voice Settings */}
         <Text className="text-neutral-400 text-sm font-medium uppercase tracking-wider mb-2 mt-4">
+          AI Voice
+        </Text>
+        <View className="bg-neutral-900 rounded-xl px-4">
+          <SettingRow
+            icon="mic"
+            title="Voice"
+            value={currentVoice.name}
+            subtitle={`${currentVoice.gender} • ${currentVoice.style}`}
+            onPress={() => setShowVoicePicker(true)}
+          />
+        </View>
+
+        {/* Playback Settings */}
+        <Text className="text-neutral-400 text-sm font-medium uppercase tracking-wider mb-2 mt-6">
           Playback
         </Text>
         <View className="bg-neutral-900 rounded-xl px-4">
@@ -240,6 +263,39 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Voice Picker */}
+      {renderPickerModal(
+        showVoicePicker,
+        () => setShowVoicePicker(false),
+        "Select AI Voice",
+        VOICE_OPTIONS.map((voice) => (
+          <Pressable
+            key={voice.id}
+            onPress={() => {
+              preferences.setDefaultVoice(voice.id);
+              setShowVoicePicker(false);
+            }}
+            className={`p-4 rounded-xl mb-2 ${
+              preferences.defaultVoice === voice.id
+                ? "bg-indigo-500/20 border border-indigo-500"
+                : "bg-neutral-800"
+            }`}
+          >
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className="text-white font-medium">{voice.name}</Text>
+                <Text className="text-neutral-400 text-sm mt-0.5">
+                  {voice.gender} • {voice.style}
+                </Text>
+              </View>
+              {preferences.defaultVoice === voice.id && (
+                <Ionicons name="checkmark-circle" size={24} color="#6366f1" />
+              )}
+            </View>
+          </Pressable>
+        ))
+      )}
 
       {/* Translation Picker */}
       {renderPickerModal(
