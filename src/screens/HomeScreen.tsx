@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -7,8 +7,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
-import { usePlaylistStore } from "../state/playlistStore";
+import { usePlaylistStore, getRecentPlaylists, getFavorites } from "../state/playlistStore";
 import { usePreferencesStore } from "../state/preferencesStore";
+import { Playlist } from "../types/bible";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -16,9 +17,19 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
 
-  const recentPlaylists = usePlaylistStore((s) => s.getRecentPlaylists());
-  const favorites = usePlaylistStore((s) => s.getFavorites());
+  const playlists = usePlaylistStore((s) => s.playlists);
+  const recentPlaylistIds = usePlaylistStore((s) => s.recentPlaylistIds);
   const defaultMode = usePreferencesStore((s) => s.defaultConsumptionMode);
+
+  const recentPlaylists = useMemo(
+    () => getRecentPlaylists(playlists, recentPlaylistIds),
+    [playlists, recentPlaylistIds]
+  );
+
+  const favorites = useMemo(
+    () => getFavorites(playlists),
+    [playlists]
+  );
 
   const quickActions = [
     {
@@ -153,7 +164,7 @@ export default function HomeScreen() {
                 <Text className="text-indigo-400 text-sm">See All</Text>
               </Pressable>
             </View>
-            {recentPlaylists.slice(0, 3).map((playlist) => (
+            {recentPlaylists.slice(0, 3).map((playlist: Playlist) => (
               <Pressable
                 key={playlist.id}
                 onPress={() => navigation.navigate("PlaylistDetail", { playlistId: playlist.id })}
@@ -186,7 +197,7 @@ export default function HomeScreen() {
             <Text className="text-white text-lg font-semibold mb-3">
               Favorites
             </Text>
-            {favorites.slice(0, 3).map((playlist) => (
+            {favorites.slice(0, 3).map((playlist: Playlist) => (
               <Pressable
                 key={playlist.id}
                 onPress={() => navigation.navigate("PlaylistDetail", { playlistId: playlist.id })}

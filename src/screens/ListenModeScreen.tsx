@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { View, Text, Pressable, Dimensions, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -10,9 +10,10 @@ import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
-import { usePlaylistStore } from "../state/playlistStore";
+import { usePlaylistStore, getPlaylistById } from "../state/playlistStore";
 import { usePreferencesStore } from "../state/preferencesStore";
 import { generatePlaylistItemAudio, TTSVoice, VOICE_OPTIONS } from "../services/ttsService";
+import { PlaylistItem, BibleVerse } from "../types/bible";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, "ListenMode">;
@@ -27,9 +28,14 @@ export default function ListenModeScreen() {
   const playlistId = route.params.playlistId;
   const startFromItem = route.params?.startFromItem;
 
-  const playlist = usePlaylistStore((s) => s.getPlaylistById(playlistId));
+  const playlists = usePlaylistStore((s) => s.playlists);
   const updatePlaybackProgress = usePlaylistStore((s) => s.updatePlaybackProgress);
   const markPlaylistCompleted = usePlaylistStore((s) => s.markPlaylistCompleted);
+
+  const playlist = useMemo(
+    () => getPlaylistById(playlists, playlistId),
+    [playlists, playlistId]
+  );
 
   const playbackSpeed = usePreferencesStore((s) => s.playbackSpeed);
   const defaultVoice = usePreferencesStore((s) => s.defaultVoice);
@@ -48,7 +54,7 @@ export default function ListenModeScreen() {
 
   useEffect(() => {
     if (startFromItem && playlist) {
-      const index = playlist.items.findIndex((item) => item.id === startFromItem);
+      const index = playlist.items.findIndex((item: PlaylistItem) => item.id === startFromItem);
       if (index >= 0) setCurrentIndex(index);
     }
 
@@ -97,7 +103,7 @@ export default function ListenModeScreen() {
     let text = "";
 
     if (speakVerseNumbers) {
-      currentItem.verses.forEach((verse) => {
+      currentItem.verses.forEach((verse: BibleVerse) => {
         text += `Verse ${verse.verse}. ${verse.text} `;
       });
     } else {

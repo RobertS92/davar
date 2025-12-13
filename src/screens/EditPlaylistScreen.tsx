@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -7,7 +7,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
-import { usePlaylistStore } from "../state/playlistStore";
+import { usePlaylistStore, getPlaylistById } from "../state/playlistStore";
+import { PlaylistItem } from "../types/bible";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, "EditPlaylist">;
@@ -18,8 +19,13 @@ export default function EditPlaylistScreen() {
   const route = useRoute<RouteProps>();
 
   const playlistId = route.params.playlistId;
-  const playlist = usePlaylistStore((s) => s.getPlaylistById(playlistId));
+  const playlists = usePlaylistStore((s) => s.playlists);
   const updatePlaylist = usePlaylistStore((s) => s.updatePlaylist);
+
+  const playlist = useMemo(
+    () => getPlaylistById(playlists, playlistId),
+    [playlists, playlistId]
+  );
 
   const [title, setTitle] = useState(playlist?.title ?? "");
   const [items, setItems] = useState(playlist?.items ?? []);
@@ -42,7 +48,7 @@ export default function EditPlaylistScreen() {
   };
 
   const handleRemoveItem = (itemId: string) => {
-    setItems(items.filter((item) => item.id !== itemId));
+    setItems(items.filter((item: PlaylistItem) => item.id !== itemId));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
@@ -101,7 +107,7 @@ export default function EditPlaylistScreen() {
             Passages ({items.length})
           </Text>
 
-          {items.map((item, index) => (
+          {items.map((item: PlaylistItem, index: number) => (
             <View
               key={item.id}
               className="bg-neutral-900 rounded-xl p-4 mb-2"

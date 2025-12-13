@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Playlist, PlaylistItem } from "../types/bible";
+import { Playlist } from "../types/bible";
 
 interface PlaylistState {
   playlists: Playlist[];
@@ -27,17 +27,11 @@ interface PlaylistState {
 
   // Recent playlists
   addToRecent: (id: string) => void;
-
-  // Getters
-  getPlaylistById: (id: string) => Playlist | undefined;
-  getFavorites: () => Playlist[];
-  getRecentPlaylists: () => Playlist[];
-  getDownloadedPlaylists: () => Playlist[];
 }
 
 export const usePlaylistStore = create<PlaylistState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       playlists: [],
       recentPlaylistIds: [],
       currentPlaylistId: null,
@@ -108,19 +102,6 @@ export const usePlaylistStore = create<PlaylistState>()(
             recentPlaylistIds: [id, ...filtered].slice(0, 10),
           };
         }),
-
-      getPlaylistById: (id) => get().playlists.find((p) => p.id === id),
-
-      getFavorites: () => get().playlists.filter((p) => p.isFavorite),
-
-      getRecentPlaylists: () => {
-        const { playlists, recentPlaylistIds } = get();
-        return recentPlaylistIds
-          .map((id) => playlists.find((p) => p.id === id))
-          .filter((p): p is Playlist => p !== undefined);
-      },
-
-      getDownloadedPlaylists: () => get().playlists.filter((p) => p.isDownloaded),
     }),
     {
       name: "scripture-playlists",
@@ -128,3 +109,23 @@ export const usePlaylistStore = create<PlaylistState>()(
     }
   )
 );
+
+// Helper functions to derive data outside of components
+// These should be called with the raw data from selectors
+export function getPlaylistById(playlists: Playlist[], id: string): Playlist | undefined {
+  return playlists.find((p) => p.id === id);
+}
+
+export function getFavorites(playlists: Playlist[]): Playlist[] {
+  return playlists.filter((p) => p.isFavorite);
+}
+
+export function getRecentPlaylists(playlists: Playlist[], recentIds: string[]): Playlist[] {
+  return recentIds
+    .map((id) => playlists.find((p) => p.id === id))
+    .filter((p): p is Playlist => p !== undefined);
+}
+
+export function getDownloadedPlaylists(playlists: Playlist[]): Playlist[] {
+  return playlists.filter((p) => p.isDownloaded);
+}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, ScrollView, Pressable, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -8,8 +8,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
-import { usePlaylistStore } from "../state/playlistStore";
+import { usePlaylistStore, getPlaylistById } from "../state/playlistStore";
 import { usePreferencesStore } from "../state/preferencesStore";
+import { PlaylistItem } from "../types/bible";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, "PlaylistDetail">;
@@ -20,11 +21,16 @@ export default function PlaylistDetailScreen() {
   const route = useRoute<RouteProps>();
 
   const playlistId = route.params.playlistId;
-  const playlist = usePlaylistStore((s) => s.getPlaylistById(playlistId));
+  const playlists = usePlaylistStore((s) => s.playlists);
   const toggleFavorite = usePlaylistStore((s) => s.toggleFavorite);
   const deletePlaylist = usePlaylistStore((s) => s.deletePlaylist);
   const addToRecent = usePlaylistStore((s) => s.addToRecent);
   const defaultMode = usePreferencesStore((s) => s.defaultConsumptionMode);
+
+  const playlist = useMemo(
+    () => getPlaylistById(playlists, playlistId),
+    [playlists, playlistId]
+  );
 
   if (!playlist) {
     return (
@@ -130,7 +136,7 @@ export default function PlaylistDetailScreen() {
           {/* Tags */}
           {playlist.tags.length > 0 && (
             <View className="flex-row flex-wrap gap-2 mt-3">
-              {playlist.tags.map((tag) => (
+              {playlist.tags.map((tag: string) => (
                 <View key={tag} className="bg-white/20 px-3 py-1 rounded-full">
                   <Text className="text-white/90 text-sm">{tag}</Text>
                 </View>
@@ -166,7 +172,7 @@ export default function PlaylistDetailScreen() {
       >
         <Text className="text-white font-semibold text-lg mb-4">Passages</Text>
 
-        {playlist.items.map((item, index) => (
+        {playlist.items.map((item: PlaylistItem, index: number) => (
           <Pressable
             key={item.id}
             onPress={() => {

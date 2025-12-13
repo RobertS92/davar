@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -6,7 +6,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
-import { usePlaylistStore } from "../state/playlistStore";
+import { usePlaylistStore, getRecentPlaylists, getFavorites, getDownloadedPlaylists } from "../state/playlistStore";
 import { Playlist } from "../types/bible";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -21,10 +21,15 @@ export default function LibraryScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
 
   const playlists = usePlaylistStore((s) => s.playlists);
-  const recentPlaylists = usePlaylistStore((s) => s.getRecentPlaylists());
-  const favorites = usePlaylistStore((s) => s.getFavorites());
-  const downloaded = usePlaylistStore((s) => s.getDownloadedPlaylists());
+  const recentPlaylistIds = usePlaylistStore((s) => s.recentPlaylistIds);
   const toggleFavorite = usePlaylistStore((s) => s.toggleFavorite);
+
+  const recentPlaylists = useMemo(
+    () => getRecentPlaylists(playlists, recentPlaylistIds),
+    [playlists, recentPlaylistIds]
+  );
+  const favorites = useMemo(() => getFavorites(playlists), [playlists]);
+  const downloaded = useMemo(() => getDownloadedPlaylists(playlists), [playlists]);
 
   const getFilteredPlaylists = (): Playlist[] => {
     let filtered: Playlist[];

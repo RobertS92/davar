@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { View, Text, Pressable, Dimensions, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -8,8 +8,9 @@ import PagerView from "react-native-pager-view";
 import * as Haptics from "expo-haptics";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
-import { usePlaylistStore } from "../state/playlistStore";
+import { usePlaylistStore, getPlaylistById } from "../state/playlistStore";
 import { usePreferencesStore } from "../state/preferencesStore";
+import { PlaylistItem, BibleVerse } from "../types/bible";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, "ReadMode">;
@@ -25,9 +26,14 @@ export default function ReadModeScreen() {
   const playlistId = route.params.playlistId;
   const startFromItem = route.params?.startFromItem;
 
-  const playlist = usePlaylistStore((s) => s.getPlaylistById(playlistId));
+  const playlists = usePlaylistStore((s) => s.playlists);
   const updatePlaybackProgress = usePlaylistStore((s) => s.updatePlaybackProgress);
   const markPlaylistCompleted = usePlaylistStore((s) => s.markPlaylistCompleted);
+
+  const playlist = useMemo(
+    () => getPlaylistById(playlists, playlistId),
+    [playlists, playlistId]
+  );
 
   const textSize = usePreferencesStore((s) => s.textSize);
   const nightMode = usePreferencesStore((s) => s.nightMode);
@@ -38,7 +44,7 @@ export default function ReadModeScreen() {
 
   useEffect(() => {
     if (startFromItem && playlist) {
-      const index = playlist.items.findIndex((item) => item.id === startFromItem);
+      const index = playlist.items.findIndex((item: PlaylistItem) => item.id === startFromItem);
       if (index >= 0) {
         setCurrentIndex(index);
         setTimeout(() => {
@@ -121,7 +127,7 @@ export default function ReadModeScreen() {
         initialPage={0}
         onPageSelected={(e) => handlePageChange(e.nativeEvent.position)}
       >
-        {playlist.items.map((item, index) => (
+        {playlist.items.map((item: PlaylistItem, index: number) => (
           <Pressable
             key={item.id}
             onPress={toggleControls}
@@ -145,7 +151,7 @@ export default function ReadModeScreen() {
 
               {/* Scripture Text */}
               {showVerseNumbers ? (
-                item.verses.map((verse) => (
+                item.verses.map((verse: BibleVerse) => (
                   <View key={verse.verse} className="flex-row mb-3">
                     <Text
                       style={{ color: "#6366f1", fontSize: textSize - 4 }}
@@ -197,7 +203,7 @@ export default function ReadModeScreen() {
           {/* Progress Dots */}
           <View className="flex-row gap-1.5">
             {totalItems <= 10 ? (
-              playlist.items.map((_, i) => (
+              playlist.items.map((_: PlaylistItem, i: number) => (
                 <View
                   key={i}
                   className={`w-2 h-2 rounded-full ${
