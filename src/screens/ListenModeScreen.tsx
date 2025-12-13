@@ -48,6 +48,7 @@ export default function ListenModeScreen() {
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasAutoPlayed, setHasAutoPlayed] = useState(false);
 
   // Use refs to avoid stale closure issues
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -99,6 +100,18 @@ export default function ListenModeScreen() {
       }
     }
   }, [startFromItem, playlist]);
+
+  // Auto-play when screen loads
+  useEffect(() => {
+    if (playlist && !hasAutoPlayed && !isLoading && !isPlaying) {
+      setHasAutoPlayed(true);
+      // Small delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        handlePlay();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [playlist, hasAutoPlayed]);
 
   if (!playlist) {
     return (
