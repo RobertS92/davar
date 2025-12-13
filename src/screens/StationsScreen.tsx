@@ -28,6 +28,42 @@ interface Station {
 
 const STATIONS: Station[] = [
   {
+    id: "messiah",
+    title: "The Messiah",
+    subtitle: "The life of Jesus Christ",
+    icon: "sunny",
+    colors: ["#fbbf24", "#f59e0b"] as const,
+    prompt: "A comprehensive journey through the life, ministry, death, and resurrection of Jesus the Messiah. Include key passages from Matthew, Mark, Luke, and John covering His birth, teachings, miracles, the Sermon on the Mount, parables, the Last Supper, crucifixion, resurrection, and His return in Revelation.",
+    tags: ["messiah", "jesus", "gospel"],
+  },
+  {
+    id: "kings",
+    title: "The Kings",
+    subtitle: "David and Solomon",
+    icon: "trophy",
+    colors: ["#a855f7", "#7c3aed"] as const,
+    prompt: "The stories of King David and King Solomon - from David being anointed as a shepherd boy, defeating Goliath, fleeing from Saul, becoming king, his psalms, his failures and repentance, to Solomon asking for wisdom, building the temple, the wisdom of Proverbs, and the warnings of Ecclesiastes.",
+    tags: ["david", "solomon", "kings"],
+  },
+  {
+    id: "famous-stories",
+    title: "Famous Stories",
+    subtitle: "Heroes of the faith",
+    icon: "book",
+    colors: ["#0ea5e9", "#0284c7"] as const,
+    prompt: "The greatest stories of the Bible - Moses and the burning bush, the Exodus and parting of the Red Sea, Joshua and the walls of Jericho, Gideon and the 300, Daniel in the lions den, Shadrach Meshach and Abednego in the fiery furnace, Joseph sold into slavery and rising to power, Abraham and Isaac, Jacob wrestling with God, Ruth and Naomi, Elijah on Mount Carmel, Jonah and the whale.",
+    tags: ["stories", "heroes", "faith"],
+  },
+  {
+    id: "stewardship",
+    title: "Stewardship",
+    subtitle: "Managing God's resources",
+    icon: "wallet",
+    colors: ["#22c55e", "#16a34a"] as const,
+    prompt: "Biblical principles on stewardship - managing money, time, and talents for God's glory. Include the parable of the talents, teachings on tithing and generosity, warnings about the love of money, contentment, storing up treasure in heaven, the widow's mite, Zacchaeus, and practical wisdom from Proverbs on finances.",
+    tags: ["stewardship", "money", "generosity"],
+  },
+  {
     id: "faith",
     title: "Faith",
     subtitle: "Build unwavering trust in God",

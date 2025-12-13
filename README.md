@@ -8,6 +8,10 @@ A mobile app that lets users create Scripture playlists and consume them in two 
 
 ### Stations (Pandora-like)
 Tap a topic to instantly generate a Scripture playlist with AI voice narration:
+- **The Messiah** - Journey through Matthew, Mark, Luke, John, and Revelation
+- **The Kings** - David and Solomon's stories
+- **Famous Stories** - Moses, Joshua, Gideon, Daniel, Joseph, Abraham, Jacob, and more
+- **Stewardship** - Managing God's resources faithfully
 - **Faith** - Build unwavering trust in God
 - **Overcoming Lust** - Purity and self-control
 - **Overcoming** - Victory through Christ
@@ -49,7 +53,7 @@ Extended 60-120 minute study sessions with comprehensive content:
   - Chapters: Full chapter studies
   - Books: Complete book studies
   - Mixed: Combination of all types
-- **12 Study Topics**:
+- **13 Study Topics**:
   - Faith & Trust
   - Salvation
   - Holiness & Purity
@@ -62,6 +66,7 @@ Extended 60-120 minute study sessions with comprehensive content:
   - Suffering & Trials
   - Identity in Christ
   - Promises of God
+  - Stewardship
 
 ### Library & Organization
 - Save and favorite playlists

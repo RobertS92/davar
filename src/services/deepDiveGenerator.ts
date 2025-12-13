@@ -15,7 +15,8 @@ export type DeepDiveTopic =
   | "obedience"
   | "suffering"
   | "identity"
-  | "promises";
+  | "promises"
+  | "stewardship";
 
 interface DeepDiveOptions {
   topic: DeepDiveTopic;
@@ -85,6 +86,11 @@ const topicGuidance: Record<DeepDiveTopic, { books: string[]; themes: string[]; 
     books: ["Genesis", "Isaiah", "Hebrews", "2 Peter"],
     themes: ["covenant promises", "God is faithful", "standing on the Word", "exceedingly great promises"],
     stories: ["Rainbow covenant", "Abraham and the stars", "Joshua crossing Jordan", "Elijah and the ravens"],
+  },
+  stewardship: {
+    books: ["Proverbs", "Matthew", "Luke", "1 Timothy"],
+    themes: ["faithful stewardship", "generosity", "contentment", "eternal treasure", "tithing", "managing resources"],
+    stories: ["Parable of the talents", "The rich young ruler", "The widow's mite", "Joseph managing Egypt", "Zacchaeus"],
   },
 };
 
@@ -451,6 +457,29 @@ function getFallbackPlaylist(topic: DeepDiveTopic, type: DeepDiveType, duration:
         "Traces God's covenant promises through Scripture",
         "Shows how Abraham believed God's promises",
         "Confirms that all God's promises are Yes in Christ",
+      ],
+    },
+    stewardship: {
+      title: "Faithful Stewardship: Managing God's Resources",
+      references: [
+        "Matthew 25:14-30",
+        "Luke 16:1-13",
+        "Luke 12:13-21",
+        "Luke 21:1-4",
+        "Malachi 3:8-12",
+        "Proverbs 3:9-10",
+        "Proverbs 11:24-25",
+        "1 Timothy 6:6-19",
+        "2 Corinthians 9:6-15",
+        "Matthew 6:19-24",
+        "Genesis 41:33-49",
+        "Luke 19:1-10",
+      ],
+      explanation: [
+        "Teaches faithful stewardship through the parable of the talents",
+        "Reveals the dangers of greed and love of money",
+        "Shows principles of generous and cheerful giving",
+        "Illustrates wise management through Joseph in Egypt",
       ],
     },
   };

@@ -159,7 +159,7 @@ export default function ModesScreen() {
 
             <View className="flex-row items-center justify-between mt-5 pt-4 border-t border-neutral-700">
               <Text className="text-indigo-400 font-medium">
-                12 study topics available
+                13 study topics available
               </Text>
               <View className="bg-indigo-500 w-10 h-10 rounded-full items-center justify-center">
                 <Ionicons name="arrow-forward" size={20} color="white" />

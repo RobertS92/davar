@@ -145,6 +145,15 @@ const deepDiveTopics: DeepDiveCategory[] = [
     description: "Key promises throughout Scripture to claim and believe",
     suggestedTypes: ["precepts", "chapters", "story"],
   },
+  {
+    id: "stewardship",
+    title: "Stewardship",
+    subtitle: "Managing God's resources",
+    icon: "wallet",
+    colors: ["#22c55e", "#16a34a"] as const,
+    description: "Biblical principles on money, time, talents, and faithful management",
+    suggestedTypes: ["precepts", "story", "chapters"],
+  },
 ];
 
 const deepDiveTypes: { id: DeepDiveType; label: string; description: string; icon: keyof typeof Ionicons.glyphMap }[] = [
