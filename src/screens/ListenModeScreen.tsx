@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { View, Text, Pressable, Dimensions, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -29,7 +29,6 @@ export default function ListenModeScreen() {
   const startFromItem = route.params?.startFromItem;
 
   const playlists = usePlaylistStore((s) => s.playlists);
-  const updatePlaybackProgress = usePlaylistStore((s) => s.updatePlaybackProgress);
   const markPlaylistCompleted = usePlaylistStore((s) => s.markPlaylistCompleted);
 
   const playlist = useMemo(
@@ -48,12 +47,13 @@ export default function ListenModeScreen() {
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasAutoPlayed, setHasAutoPlayed] = useState(false);
 
   // Use refs to avoid stale closure issues
   const soundRef = useRef<Audio.Sound | null>(null);
   const currentIndexRef = useRef(currentIndex);
-  const isPlayingRef = useRef(isPlaying);
+  const isLoadingRef = useRef(isLoading);
+  const hasStartedRef = useRef(false);
+  const shouldContinuePlayingRef = useRef(true);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -61,8 +61,11 @@ export default function ListenModeScreen() {
   }, [currentIndex]);
 
   useEffect(() => {
-    isPlayingRef.current = isPlaying;
-  }, [isPlaying]);
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
+
+  // Get total items
+  const totalItems = playlist?.items.length || 0;
 
   // Setup audio mode on mount
   useEffect(() => {
@@ -84,7 +87,7 @@ export default function ListenModeScreen() {
     setupAudio();
 
     return () => {
-      // Cleanup on unmount
+      shouldContinuePlayingRef.current = false;
       if (soundRef.current) {
         soundRef.current.unloadAsync();
       }
@@ -97,21 +100,21 @@ export default function ListenModeScreen() {
       const index = playlist.items.findIndex((item: PlaylistItem) => item.id === startFromItem);
       if (index >= 0) {
         setCurrentIndex(index);
+        currentIndexRef.current = index;
       }
     }
   }, [startFromItem, playlist]);
 
-  // Auto-play when screen loads
+  // Auto-play on mount - only once
   useEffect(() => {
-    if (playlist && !hasAutoPlayed && !isLoading && !isPlaying) {
-      setHasAutoPlayed(true);
-      // Small delay to ensure component is fully mounted
+    if (playlist && !hasStartedRef.current) {
+      hasStartedRef.current = true;
       const timer = setTimeout(() => {
-        handlePlay();
-      }, 500);
+        playTrack(currentIndexRef.current);
+      }, 600);
       return () => clearTimeout(timer);
     }
-  }, [playlist, hasAutoPlayed]);
+  }, [playlist]);
 
   if (!playlist) {
     return (
@@ -122,7 +125,6 @@ export default function ListenModeScreen() {
   }
 
   const currentItem = playlist.items[currentIndex];
-  const totalItems = playlist.items.length;
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -130,15 +132,15 @@ export default function ListenModeScreen() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const prepareText = () => {
+  const prepareText = (item: PlaylistItem) => {
     let text = "";
 
-    if (speakVerseNumbers && currentItem.verses) {
-      currentItem.verses.forEach((verse: BibleVerse) => {
+    if (speakVerseNumbers && item.verses) {
+      item.verses.forEach((verse: BibleVerse) => {
         text += `Verse ${verse.verse}. ${verse.text} `;
       });
     } else {
-      text = currentItem.text || "";
+      text = item.text || "";
     }
 
     return text;
@@ -146,7 +148,6 @@ export default function ListenModeScreen() {
 
   const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
     if (!status.isLoaded) {
-      // Handle error
       if (status.error) {
         console.log("Playback error:", status.error);
         setError("Playback error occurred");
@@ -162,44 +163,46 @@ export default function ListenModeScreen() {
       setDuration(status.durationMillis / 1000);
     }
 
-    // Handle playback finished
+    // Handle playback finished - auto advance to next track
     if (status.didJustFinish && !status.isLooping) {
-      console.log("Playback finished");
+      console.log("Track finished, advancing to next...");
       setIsPlaying(false);
-      setProgress(1);
+      setProgress(0);
 
-      // Auto-advance to next track
-      const idx = currentIndexRef.current;
-      if (idx < totalItems - 1) {
+      const nextIndex = currentIndexRef.current + 1;
+
+      if (nextIndex < totalItems && shouldContinuePlayingRef.current) {
+        // Auto-play next track
         setTimeout(() => {
-          handleNext();
-        }, 1500);
+          setCurrentIndex(nextIndex);
+          currentIndexRef.current = nextIndex;
+          playTrack(nextIndex);
+        }, 800);
       } else {
+        // Playlist complete
+        console.log("Playlist completed");
         markPlaylistCompleted(playlistId);
       }
     }
   };
 
-  const handlePlay = async () => {
-    // If playing, pause
-    if (isPlaying && soundRef.current) {
-      console.log("Pausing playback");
-      await soundRef.current.pauseAsync();
-      setIsPlaying(false);
+  const playTrack = async (index: number) => {
+    if (isLoadingRef.current) {
+      console.log("Already loading, skipping...");
       return;
     }
 
-    // If we have a paused sound with progress, resume
-    if (soundRef.current && progress > 0 && progress < 1) {
-      console.log("Resuming playback");
-      await soundRef.current.playAsync();
-      setIsPlaying(true);
+    const item = playlist.items[index];
+    if (!item) {
+      console.log("No item at index:", index);
       return;
     }
 
-    // Generate and play new audio
+    console.log("Playing track:", index, item.title);
     setIsLoading(true);
+    isLoadingRef.current = true;
     setError(null);
+    setProgress(0);
 
     try {
       // Cleanup any existing sound first
@@ -209,8 +212,8 @@ export default function ListenModeScreen() {
         soundRef.current = null;
       }
 
-      const text = prepareText();
-      console.log("Preparing to play audio, text length:", text.length);
+      const text = prepareText(item);
+      console.log("Preparing audio for:", item.title, "text length:", text.length);
 
       if (!text || text.length === 0) {
         throw new Error("No text to speak");
@@ -219,7 +222,7 @@ export default function ListenModeScreen() {
       const voice = (defaultVoice as TTSVoice) || "nova";
 
       const result = await generatePlaylistItemAudio(
-        currentItem.title,
+        item.title,
         text,
         {
           voice,
@@ -231,7 +234,6 @@ export default function ListenModeScreen() {
       console.log("Audio generated, URI:", result.audioUri);
 
       // Create and load the sound
-      console.log("Creating sound object...");
       const { sound } = await Audio.Sound.createAsync(
         { uri: result.audioUri },
         {
@@ -241,20 +243,50 @@ export default function ListenModeScreen() {
         onPlaybackStatusUpdate
       );
 
-      // Store the sound reference
       soundRef.current = sound;
       setDuration(result.duration);
       setIsPlaying(true);
       setIsLoading(false);
+      isLoadingRef.current = false;
 
-      console.log("Playback started successfully");
+      console.log("Playback started successfully for:", item.title);
 
     } catch (err) {
       console.log("TTS/Playback error:", err);
       setError("Failed to play audio. Please try again.");
       setIsLoading(false);
+      isLoadingRef.current = false;
       setIsPlaying(false);
     }
+  };
+
+  const handlePlayPause = async () => {
+    if (isLoading) return;
+
+    if (isPlaying && soundRef.current) {
+      console.log("Pausing playback");
+      await soundRef.current.pauseAsync();
+      setIsPlaying(false);
+      return;
+    }
+
+    // If we have a paused sound, resume it
+    if (soundRef.current && !isPlaying) {
+      try {
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded && status.positionMillis > 0) {
+          console.log("Resuming playback");
+          await soundRef.current.playAsync();
+          setIsPlaying(true);
+          return;
+        }
+      } catch (err) {
+        console.log("Error checking sound status:", err);
+      }
+    }
+
+    // Start fresh
+    playTrack(currentIndex);
   };
 
   const handleSeek = async (value: number) => {
@@ -267,37 +299,50 @@ export default function ListenModeScreen() {
 
   const handlePrevious = async () => {
     if (currentIndex > 0) {
-      // Stop current audio
       if (soundRef.current) {
         await soundRef.current.stopAsync();
         await soundRef.current.unloadAsync();
         soundRef.current = null;
       }
+      const newIndex = currentIndex - 1;
+      setCurrentIndex(newIndex);
+      currentIndexRef.current = newIndex;
       setIsPlaying(false);
       setProgress(0);
       setDuration(0);
-      setCurrentIndex(currentIndex - 1);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      // Auto-play previous track
+      setTimeout(() => {
+        playTrack(newIndex);
+      }, 300);
     }
   };
 
   const handleNext = async () => {
-    if (currentIndexRef.current < totalItems - 1) {
-      // Stop current audio
+    if (currentIndex < totalItems - 1) {
       if (soundRef.current) {
         await soundRef.current.stopAsync();
         await soundRef.current.unloadAsync();
         soundRef.current = null;
       }
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+      currentIndexRef.current = newIndex;
       setIsPlaying(false);
       setProgress(0);
       setDuration(0);
-      setCurrentIndex(currentIndexRef.current + 1);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      // Auto-play next track
+      setTimeout(() => {
+        playTrack(newIndex);
+      }, 300);
     }
   };
 
   const handleClose = async () => {
+    shouldContinuePlayingRef.current = false;
     if (soundRef.current) {
       await soundRef.current.stopAsync();
       await soundRef.current.unloadAsync();
@@ -412,7 +457,7 @@ export default function ListenModeScreen() {
           </Pressable>
 
           <Pressable
-            onPress={handlePlay}
+            onPress={handlePlayPause}
             disabled={isLoading}
             className="w-20 h-20 rounded-full bg-white items-center justify-center"
           >
