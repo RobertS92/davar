@@ -2,11 +2,11 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { View, Text } from "react-native";
 
 // Screens
 import HomeScreen from "../screens/HomeScreen";
 import LibraryScreen from "../screens/LibraryScreen";
+import StationsScreen from "../screens/StationsScreen";
 import CreatePlaylistScreen from "../screens/CreatePlaylistScreen";
 import PromptPlaylistScreen from "../screens/PromptPlaylistScreen";
 import PlaylistDetailScreen from "../screens/PlaylistDetailScreen";
@@ -35,8 +35,8 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Home: undefined;
+  Stations: undefined;
   Library: undefined;
-  Create: undefined;
   Modes: undefined;
   Settings: undefined;
 };
@@ -53,10 +53,10 @@ function TabNavigator() {
 
           if (route.name === "Home") {
             iconName = focused ? "home" : "home-outline";
+          } else if (route.name === "Stations") {
+            iconName = focused ? "radio" : "radio-outline";
           } else if (route.name === "Library") {
             iconName = focused ? "library" : "library-outline";
-          } else if (route.name === "Create") {
-            iconName = focused ? "add-circle" : "add-circle-outline";
           } else if (route.name === "Modes") {
             iconName = focused ? "moon" : "moon-outline";
           } else if (route.name === "Settings") {
@@ -83,12 +83,8 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Stations" component={StationsScreen} />
       <Tab.Screen name="Library" component={LibraryScreen} />
-      <Tab.Screen
-        name="Create"
-        component={CreatePlaylistScreen}
-        options={{ tabBarLabel: "Create" }}
-      />
       <Tab.Screen name="Modes" component={ModesScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>

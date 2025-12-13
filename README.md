@@ -6,13 +6,34 @@ A mobile app that lets users create Scripture playlists and consume them in two 
 
 ## Features
 
+### Stations (Pandora-like)
+Tap a topic to instantly generate a Scripture playlist with AI voice narration:
+- **Faith** - Build unwavering trust in God
+- **Overcoming Lust** - Purity and self-control
+- **Overcoming** - Victory through Christ
+- **Obedience** - Walking in His ways
+- **The Narrow Path** - Radical discipleship
+- **Fatherhood** - Leading your family well
+- **Motherhood** - Nurturing with wisdom
+- **Marriage** - Covenant love
+- **Work** - Working as unto the Lord
+
 ### Playlist Creation
 - **Manual Entry**: Enter verse references (verse/range/chapter/book)
 - **AI-Powered**: Describe what you need and get a curated playlist
 
 ### Consumption Modes
-- **Listen Mode**: Full audio player with play/pause, skip, progress tracking
+- **Listen Mode**: Full audio player with AI TTS, play/pause, skip, progress tracking
 - **Read Mode**: Swipeable cards with adjustable text size and night mode
+
+### AI Voice Options
+6 natural-sounding voices powered by OpenAI TTS:
+- Alloy (Neutral, balanced)
+- Echo (Male, warm)
+- Fable (Male, British narrative)
+- Onyx (Male, deep authoritative)
+- Nova (Female, friendly)
+- Shimmer (Female, soft gentle)
 
 ### Pre-built Modes
 - **Bedtime**: Calmer voice, longer pauses, peaceful passages
@@ -32,6 +53,7 @@ src/
 ├── components/       # Reusable UI components
 ├── screens/          # Screen components
 │   ├── HomeScreen.tsx
+│   ├── StationsScreen.tsx
 │   ├── LibraryScreen.tsx
 │   ├── CreatePlaylistScreen.tsx
 │   ├── PromptPlaylistScreen.tsx
@@ -48,7 +70,8 @@ src/
 │   ├── bibleParser.ts      # Reference parsing
 │   ├── bibleData.ts        # Bible text data
 │   ├── playlistCompiler.ts # Compile playlists
-│   └── playlistGenerator.ts # AI generation
+│   ├── playlistGenerator.ts # AI generation
+│   └── ttsService.ts       # OpenAI TTS audio generation
 ├── state/            # Zustand stores
 │   ├── preferencesStore.ts
 │   └── playlistStore.ts
@@ -84,5 +107,6 @@ Using Zustand with AsyncStorage persistence:
 - TypeScript
 - NativeWind (TailwindCSS)
 - Zustand for state
-- expo-speech for TTS
+- OpenAI TTS API for AI voice generation
+- expo-av for audio playback
 - react-native-pager-view for reading cards
