@@ -71,6 +71,24 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
       6: "And these words, which I command thee this day, shall be in thine heart:",
       7: "And thou shalt teach them diligently unto thy children, and shalt talk of them when thou sittest in thine house, and when thou walkest by the way, and when thou liest down, and when thou risest up.",
     },
+    8: {
+      18: "But thou shalt remember the LORD thy God: for it is he that giveth thee power to get wealth, that he may establish his covenant which he sware unto thy fathers, as it is this day.",
+    },
+    28: {
+      1: "And it shall come to pass, if thou shalt hearken diligently unto the voice of the LORD thy God, to observe and to do all his commandments which I command thee this day, that the LORD thy God will set thee on high above all nations of the earth:",
+      2: "And all these blessings shall come on thee, and overtake thee, if thou shalt hearken unto the voice of the LORD thy God.",
+      3: "Blessed shalt thou be in the city, and blessed shalt thou be in the field.",
+      4: "Blessed shall be the fruit of thy body, and the fruit of thy ground, and the fruit of thy cattle, the increase of thy kine, and the flocks of thy sheep.",
+      5: "Blessed shall be thy basket and thy store.",
+      6: "Blessed shalt thou be when thou comest in, and blessed shalt thou be when thou goest out.",
+      7: "The LORD shall cause thine enemies that rise up against thee to be smitten before thy face: they shall come out against thee one way, and flee before thee seven ways.",
+      8: "The LORD shall command the blessing upon thee in thy storehouses, and in all that thou settest thine hand unto; and he shall bless thee in the land which the LORD thy God giveth thee.",
+      9: "The LORD shall establish thee an holy people unto himself, as he hath sworn unto thee, if thou shalt keep the commandments of the LORD thy God, and walk in his ways.",
+      10: "And all people of the earth shall see that thou art called by the name of the LORD; and they shall be afraid of thee.",
+      11: "And the LORD shall make thee plenteous in goods, in the fruit of thy body, and in the fruit of thy cattle, and in the fruit of thy ground, in the land which the LORD sware unto thy fathers to give thee.",
+      12: "The LORD shall open unto thee his good treasure, the heaven to give the rain unto thy land in his season, and to bless all the work of thine hand: and thou shalt lend unto many nations, and thou shalt not borrow.",
+      13: "And the LORD shall make thee the head, and not the tail; and thou shalt be above only, and thou shalt not be beneath; if that thou hearken unto the commandments of the LORD thy God, which I command thee this day, to observe and to do them:",
+    },
     31: {
       6: "Be strong and of a good courage, fear not, nor be afraid of them: for the LORD thy God, he it is that doth go with thee; he will not fail thee, nor forsake thee.",
       8: "And the LORD, he it is that doth go before thee; he will be with thee, he will not fail thee, neither forsake thee: fear not, neither be dismayed.",
@@ -78,11 +96,43 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
   },
   "Joshua": {
     1: {
+      5: "There shall not any man be able to stand before thee all the days of thy life: as I was with Moses, so I will be with thee: I will not fail thee, nor forsake thee.",
+      6: "Be strong and of a good courage: for unto this people shalt thou divide for an inheritance the land, which I sware unto their fathers to give them.",
+      7: "Only be thou strong and very courageous, that thou mayest observe to do according to all the law, which Moses my servant commanded thee: turn not from it to the right hand or to the left, that thou mayest prosper whithersoever thou goest.",
       8: "This book of the law shall not depart out of thy mouth; but thou shalt meditate therein day and night, that thou mayest observe to do according to all that is written therein: for then thou shalt make thy way prosperous, and then thou shalt have good success.",
       9: "Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest.",
     },
     24: {
       15: "And if it seem evil unto you to serve the LORD, choose you this day whom ye will serve; whether the gods which your fathers served that were on the other side of the flood, or the gods of the Amorites, in whose land ye dwell: but as for me and my house, we will serve the LORD.",
+    },
+  },
+  "Job": {
+    1: {
+      21: "And said, Naked came I out of my mother's womb, and naked shall I return thither: the LORD gave, and the LORD hath taken away; blessed be the name of the LORD.",
+      22: "In all this Job sinned not, nor charged God foolishly.",
+    },
+    13: {
+      15: "Though he slay me, yet will I trust in him: but I will maintain mine own ways before him.",
+    },
+    19: {
+      25: "For I know that my redeemer liveth, and that he shall stand at the latter day upon the earth:",
+      26: "And though after my skin worms destroy this body, yet in my flesh shall I see God:",
+      27: "Whom I shall see for myself, and mine eyes shall behold, and not another; though my reins be consumed within me.",
+    },
+    23: {
+      10: "But he knoweth the way that I take: when he hath tried me, I shall come forth as gold.",
+    },
+    31: {
+      1: "I made a covenant with mine eyes; why then should I think upon a maid?",
+      2: "For what portion of God is there from above? and what inheritance of the Almighty from on high?",
+      3: "Is not destruction to the wicked? and a strange punishment to the workers of iniquity?",
+      4: "Doth not he see my ways, and count all my steps?",
+    },
+    42: {
+      2: "I know that thou canst do every thing, and that no thought can be withholden from thee.",
+      5: "I have heard of thee by the hearing of the ear: but now mine eye seeth thee.",
+      6: "Wherefore I abhor myself, and repent in dust and ashes.",
+      10: "And the LORD turned the captivity of Job, when he prayed for his friends: also the LORD gave Job twice as much as he had before.",
     },
   },
   "Psalms": {
@@ -200,6 +250,35 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
       23: "Search me, O God, and know my heart: try me, and know my thoughts:",
       24: "And see if there be any wicked way in me, and lead me in the way everlasting.",
     },
+    18: {
+      1: "I will love thee, O LORD, my strength.",
+      2: "The LORD is my rock, and my fortress, and my deliverer; my God, my strength, in whom I will trust; my buckler, and the horn of my salvation, and my high tower.",
+      3: "I will call upon the LORD, who is worthy to be praised: so shall I be saved from mine enemies.",
+      6: "In my distress I called upon the LORD, and cried unto my God: he heard my voice out of his temple, and my cry came before him, even into his ears.",
+      16: "He sent from above, he took me, he drew me out of many waters.",
+      28: "For thou wilt light my candle: the LORD my God will enlighten my darkness.",
+      29: "For by thee I have run through a troop; and by my God have I leaped over a wall.",
+      30: "As for God, his way is perfect: the word of the LORD is tried: he is a buckler to all those that trust in him.",
+      31: "For who is God save the LORD? or who is a rock save our God?",
+      32: "It is God that girdeth me with strength, and maketh my way perfect.",
+      46: "The LORD liveth; and blessed be my rock; and let the God of my salvation be exalted.",
+    },
+    29: {
+      11: "The LORD will give strength unto his people; the LORD will bless his people with peace.",
+    },
+    84: {
+      11: "For the LORD God is a sun and shield: the LORD will give grace and glory: no good thing will he withhold from them that walk uprightly.",
+    },
+    90: {
+      16: "Let thy work appear unto thy servants, and thy glory unto their children.",
+      17: "And let the beauty of the LORD our God be upon us: and establish thou the work of our hands upon us; yea, the work of our hands establish thou it.",
+    },
+    101: {
+      3: "I will set no wicked thing before mine eyes: I hate the work of them that turn aside; it shall not cleave to me.",
+    },
+    138: {
+      8: "The LORD will perfect that which concerneth me: thy mercy, O LORD, endureth for ever: forsake not the works of thine own hands.",
+    },
   },
   "Proverbs": {
     1: {
@@ -249,6 +328,36 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
     16: {
       3: "Commit thy works unto the LORD, and thy thoughts shall be established.",
       9: "A man's heart deviseth his way: but the LORD directeth his steps.",
+      1: "The preparations of the heart in man, and the answer of the tongue, is from the LORD.",
+      2: "All the ways of a man are clean in his own eyes; but the LORD weigheth the spirits.",
+      4: "The LORD hath made all things for himself: yea, even the wicked for the day of evil.",
+      5: "Every one that is proud in heart is an abomination to the LORD: though hand join in hand, he shall not be unpunished.",
+      6: "By mercy and truth iniquity is purged: and by the fear of the LORD men depart from evil.",
+      7: "When a man's ways please the LORD, he maketh even his enemies to be at peace with him.",
+      8: "Better is a little with righteousness than great revenues without right.",
+      11: "A just weight and balance are the LORD's: all the weights of the bag are his work.",
+      16: "How much better is it to get wisdom than gold! and to get understanding rather to be chosen than silver!",
+      18: "Pride goeth before destruction, and an haughty spirit before a fall.",
+      20: "He that handleth a matter wisely shall find good: and whoso trusteth in the LORD, happy is he.",
+      24: "Pleasant words are as an honeycomb, sweet to the soul, and health to the bones.",
+      32: "He that is slow to anger is better than the mighty; and he that ruleth his spirit than he that taketh a city.",
+      33: "The lot is cast into the lap; but the whole disposing thereof is of the LORD.",
+    },
+    21: {
+      5: "The thoughts of the diligent tend only to plenteousness; but of every one that is hasty only to want.",
+      1: "The king's heart is in the hand of the LORD, as the rivers of water: he turneth it whithersoever he will.",
+      2: "Every way of a man is right in his own eyes: but the LORD pondereth the hearts.",
+      3: "To do justice and judgment is more acceptable to the LORD than sacrifice.",
+      21: "He that followeth after righteousness and mercy findeth life, righteousness, and honour.",
+      31: "The horse is prepared against the day of battle: but safety is of the LORD.",
+    },
+    22: {
+      6: "Train up a child in the way he should go: and when he is old, he will not depart from it.",
+      9: "He that hath a bountiful eye shall be blessed; for he giveth of his bread to the poor.",
+      29: "Seest thou a man diligent in his business? he shall stand before kings; he shall not stand before mean men.",
+      1: "A good name is rather to be chosen than great riches, and loving favour rather than silver and gold.",
+      2: "The rich and poor meet together: the LORD is the maker of them all.",
+      4: "By humility and the fear of the LORD are riches, and honour, and life.",
     },
     18: {
       22: "Whoso findeth a wife findeth a good thing, and obtaineth favour of the LORD.",
@@ -259,10 +368,6 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
     },
     20: {
       7: "The just man walketh in his integrity: his children are blessed after him.",
-    },
-    22: {
-      6: "Train up a child in the way he should go: and when he is old, he will not depart from it.",
-      29: "Seest thou a man diligent in his business? he shall stand before kings; he shall not stand before mean men.",
     },
     27: {
       17: "Iron sharpeneth iron; so a man sharpeneth the countenance of his friend.",
@@ -299,6 +404,27 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
     },
   },
   "Isaiah": {
+    1: {
+      10: "Hear the word of the LORD, ye rulers of Sodom; give ear unto the law of our God, ye people of Gomorrah.",
+      11: "To what purpose is the multitude of your sacrifices unto me? saith the LORD: I am full of the burnt offerings of rams, and the fat of fed beasts; and I delight not in the blood of bullocks, or of lambs, or of he goats.",
+      12: "When ye come to appear before me, who hath required this at your hand, to tread my courts?",
+      13: "Bring no more vain oblations; incense is an abomination unto me; the new moons and sabbaths, the calling of assemblies, I cannot away with; it is iniquity, even the solemn meeting.",
+      14: "Your new moons and your appointed feasts my soul hateth: they are a trouble unto me; I am weary to bear them.",
+      15: "And when ye spread forth your hands, I will hide mine eyes from you: yea, when ye make many prayers, I will not hear: your hands are full of blood.",
+      16: "Wash you, make you clean; put away the evil of your doings from before mine eyes; cease to do evil;",
+      17: "Learn to do well; seek judgment, relieve the oppressed, judge the fatherless, plead for the widow.",
+      18: "Come now, and let us reason together, saith the LORD: though your sins be as scarlet, they shall be as white as snow; though they be red like crimson, they shall be as wool.",
+      19: "If ye be willing and obedient, ye shall eat the good of the land:",
+      20: "But if ye refuse and rebel, ye shall be devoured with the sword: for the mouth of the LORD hath spoken it.",
+      24: "Therefore saith the Lord, the LORD of hosts, the mighty One of Israel, Ah, I will ease me of mine adversaries, and avenge me of mine enemies:",
+      25: "And I will turn my hand upon thee, and purely purge away thy dross, and take away all thy tin:",
+      26: "And I will restore thy judges as at the first, and thy counsellors as at the beginning: afterward thou shalt be called, The city of righteousness, the faithful city.",
+      27: "Zion shall be redeemed with judgment, and her converts with righteousness.",
+      28: "And the destruction of the transgressors and of the sinners shall be together, and they that forsake the LORD shall be consumed.",
+      29: "For they shall be ashamed of the oaks which ye have desired, and ye shall be confounded for the gardens that ye have chosen.",
+      30: "For ye shall be as an oak whose leaf fadeth, and as a garden that hath no water.",
+      31: "And the strong shall be as tow, and the maker of it as a spark, and they shall both burn together, and none shall quench them.",
+    },
     6: {
       8: "Also I heard the voice of the Lord, saying, Whom shall I send, and who will go for us? Then said I, Here am I; send me.",
     },
@@ -334,6 +460,9 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
       8: "For my thoughts are not your thoughts, neither are your ways my ways, saith the LORD.",
       9: "For as the heavens are higher than the earth, so are my ways higher than your ways, and my thoughts than your thoughts.",
       11: "So shall my word be that goeth forth out of my mouth: it shall not return unto me void, but it shall accomplish that which I please, and it shall prosper in the thing whereto I sent it.",
+    },
+    59: {
+      19: "So shall they fear the name of the LORD from the west, and his glory from the rising of the sun. When the enemy shall come in like a flood, the Spirit of the LORD shall lift up a standard against him.",
     },
   },
   "Jeremiah": {
@@ -450,6 +579,8 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
   "Mark": {
     10: {
       9: "What therefore God hath joined together, let not man put asunder.",
+      29: "And Jesus answered and said, Verily I say unto you, There is no man that hath left house, or brethren, or sisters, or father, or mother, or wife, or children, or lands, for my sake, and the gospel's,",
+      30: "But he shall receive an hundredfold now in this time, houses, and brethren, and sisters, and mothers, and children, and lands, with persecutions; and in the world to come eternal life.",
       45: "For even the Son of man came not to be ministered unto, but to minister, and to give his life a ransom for many.",
     },
     11: {
@@ -464,6 +595,10 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
     },
     9: {
       23: "And he said to them all, If any man will come after me, let him deny himself, and take up his cross daily, and follow me.",
+    },
+    10: {
+      19: "Behold, I give unto you power to tread on serpents and scorpions, and over all the power of the enemy: and nothing shall by any means hurt you.",
+      20: "Notwithstanding in this rejoice not, that the spirits are subject unto you; but rather rejoice, because your names are written in heaven.",
     },
     11: {
       9: "And I say unto you, Ask, and it shall be given you; seek, and ye shall find; knock, and it shall be opened unto you.",
@@ -782,6 +917,9 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
   },
   "1 Timothy": {
     4: {
+      1: "Now the Spirit speaketh expressly, that in the latter times some shall depart from the faith, giving heed to seducing spirits, and doctrines of devils;",
+      7: "But refuse profane and old wives' fables, and exercise thyself rather unto godliness.",
+      8: "For bodily exercise profiteth little: but godliness is profitable unto all things, having promise of the life that now is, and of that which is to come.",
       12: "Let no man despise thy youth; but be thou an example of the believers, in word, in conversation, in charity, in spirit, in faith, in purity.",
     },
     5: {
@@ -799,6 +937,13 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
       7: "For God hath not given us the spirit of fear; but of power, and of love, and of a sound mind.",
     },
     2: {
+      1: "Thou therefore, my son, be strong in the grace that is in Christ Jesus.",
+      2: "And the things that thou hast heard of me among many witnesses, the same commit thou to faithful men, who shall be able to teach others also.",
+      3: "Thou therefore endure hardness, as a good soldier of Jesus Christ.",
+      4: "No man that warreth entangleth himself with the affairs of this life; that he may please him who hath chosen him to be a soldier.",
+      5: "And if a man also strive for masteries, yet is he not crowned, except he strive lawfully.",
+      6: "The husbandman that laboureth must be first partaker of the fruits.",
+      7: "Consider what I say; and the Lord give thee understanding in all things.",
       15: "Study to shew thyself approved unto God, a workman that needeth not to be ashamed, rightly dividing the word of truth.",
       22: "Flee also youthful lusts: but follow righteousness, faith, charity, peace, with them that call on the Lord out of a pure heart.",
     },
@@ -825,6 +970,13 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
       15: "For we have not an high priest which cannot be touched with the feeling of our infirmities; but was in all points tempted like as we are, yet without sin.",
       16: "Let us therefore come boldly unto the throne of grace, that we may obtain mercy, and find grace to help in time of need.",
     },
+    6: {
+      10: "For God is not unrighteous to forget your work and labour of love, which ye have shewed toward his name, in that ye have ministered to the saints, and do minister.",
+      11: "And we desire that every one of you do shew the same diligence to the full assurance of hope unto the end:",
+      12: "That ye be not slothful, but followers of them who through faith and patience inherit the promises.",
+      18: "That by two immutable things, in which it was impossible for God to lie, we might have a strong consolation, who have fled for refuge to lay hold upon the hope set before us:",
+      19: "Which hope we have as an anchor of the soul, both sure and stedfast, and which entereth into that within the veil;",
+    },
     10: {
       23: "Let us hold fast the profession of our faith without wavering; (for he is faithful that promised;)",
       24: "And let us consider one another to provoke unto love and to good works:",
@@ -832,7 +984,17 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
     },
     11: {
       1: "Now faith is the substance of things hoped for, the evidence of things not seen.",
+      3: "Through faith we understand that the worlds were framed by the word of God, so that things which are seen were not made of things which do appear.",
       6: "But without faith it is impossible to please him: for he that cometh to God must believe that he is, and that he is a rewarder of them that diligently seek him.",
+      7: "By faith Noah, being warned of God of things not seen as yet, moved with fear, prepared an ark to the saving of his house; by the which he condemned the world, and became heir of the righteousness which is by faith.",
+      8: "By faith Abraham, when he was called to go out into a place which he should after receive for an inheritance, obeyed; and he went out, not knowing whither he went.",
+      11: "Through faith also Sara herself received strength to conceive seed, and was delivered of a child when she was past age, because she judged him faithful who had promised.",
+      17: "By faith Abraham, when he was tried, offered up Isaac: and he that had received the promises offered up his only begotten son,",
+      24: "By faith Moses, when he was come to years, refused to be called the son of Pharaoh's daughter;",
+      25: "Choosing rather to suffer affliction with the people of God, than to enjoy the pleasures of sin for a season;",
+      32: "And what shall I more say? for the time would fail me to tell of Gedeon, and of Barak, and of Samson, and of Jephthae; of David also, and Samuel, and of the prophets:",
+      33: "Who through faith subdued kingdoms, wrought righteousness, obtained promises, stopped the mouths of lions,",
+      34: "Quenched the violence of fire, escaped the edge of the sword, out of weakness were made strong, waxed valiant in fight, turned to flight the armies of the aliens.",
     },
     12: {
       1: "Wherefore seeing we also are compassed about with so great a cloud of witnesses, let us lay aside every weight, and the sin which doth so easily beset us, and let us run with patience the race that is set before us,",
@@ -944,14 +1106,26 @@ export const KJV_BIBLE: Record<string, Record<number, Record<number, string>>> =
     },
   },
   "Revelation": {
+    2: {
+      7: "He that hath an ear, let him hear what the Spirit saith unto the churches; To him that overcometh will I give to eat of the tree of life, which is in the midst of the paradise of God.",
+      10: "Fear none of those things which thou shalt suffer: behold, the devil shall cast some of you into prison, that ye may be tried; and ye shall have tribulation ten days: be thou faithful unto death, and I will give thee a crown of life.",
+      11: "He that hath an ear, let him hear what the Spirit saith unto the churches; He that overcometh shall not be hurt of the second death.",
+      17: "He that hath an ear, let him hear what the Spirit saith unto the churches; To him that overcometh will I give to eat of the hidden manna, and will give him a white stone, and in the stone a new name written, which no man knoweth saving he that receiveth it.",
+      26: "And he that overcometh, and keepeth my works unto the end, to him will I give power over the nations:",
+    },
     3: {
+      5: "He that overcometh, the same shall be clothed in white raiment; and I will not blot out his name out of the book of life, but I will confess his name before my Father, and before his angels.",
+      12: "Him that overcometh will I make a pillar in the temple of my God, and he shall go no more out: and I will write upon him the name of my God, and the name of the city of my God, which is new Jerusalem, which cometh down out of heaven from my God: and I will write upon him my new name.",
       20: "Behold, I stand at the door, and knock: if any man hear my voice, and open the door, I will come in to him, and will sup with him, and he with me.",
+      21: "To him that overcometh will I grant to sit with me in my throne, even as I also overcame, and am set down with my Father in his throne.",
     },
     21: {
       4: "And God shall wipe away all tears from their eyes; and there shall be no more death, neither sorrow, nor crying, neither shall there be any more pain: for the former things are passed away.",
+      7: "He that overcometh shall inherit all things; and I will be his God, and he shall be my son.",
     },
     22: {
       12: "And, behold, I come quickly; and my reward is with me, to give every man according as his work shall be.",
+      14: "Blessed are they that do his commandments, that they may have right to the tree of life, and may enter in through the gates into the city.",
     },
   },
 };
