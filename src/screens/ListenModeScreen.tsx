@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { View, Text, Pressable, Dimensions, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -6,7 +6,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Slider from "@react-native-community/slider";
-import { Audio } from "expo-av";
+import { Audio, AVPlaybackStatus } from "expo-av";
 import * as Haptics from "expo-haptics";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
@@ -49,16 +49,22 @@ export default function ListenModeScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Use refs to avoid stale closure issues
   const soundRef = useRef<Audio.Sound | null>(null);
-  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const currentIndexRef = useRef(currentIndex);
+  const isPlayingRef = useRef(isPlaying);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   useEffect(() => {
-    if (startFromItem && playlist) {
-      const index = playlist.items.findIndex((item: PlaylistItem) => item.id === startFromItem);
-      if (index >= 0) setCurrentIndex(index);
-    }
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
-    // Configure audio mode for playback
+  // Setup audio mode on mount
+  useEffect(() => {
     const setupAudio = async () => {
       try {
         await Audio.setAudioModeAsync({
@@ -66,6 +72,7 @@ export default function ListenModeScreen() {
           playsInSilentModeIOS: true,
           staysActiveInBackground: true,
           shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
         });
         console.log("Audio mode configured successfully");
       } catch (err) {
@@ -76,20 +83,22 @@ export default function ListenModeScreen() {
     setupAudio();
 
     return () => {
-      cleanup();
+      // Cleanup on unmount
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
     };
-  }, [startFromItem, playlist]);
+  }, []);
 
-  const cleanup = async () => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
+  // Handle start from specific item
+  useEffect(() => {
+    if (startFromItem && playlist) {
+      const index = playlist.items.findIndex((item: PlaylistItem) => item.id === startFromItem);
+      if (index >= 0) {
+        setCurrentIndex(index);
+      }
     }
-    if (soundRef.current) {
-      await soundRef.current.stopAsync();
-      await soundRef.current.unloadAsync();
-      soundRef.current = null;
-    }
-  };
+  }, [startFromItem, playlist]);
 
   if (!playlist) {
     return (
@@ -111,43 +120,89 @@ export default function ListenModeScreen() {
   const prepareText = () => {
     let text = "";
 
-    if (speakVerseNumbers) {
+    if (speakVerseNumbers && currentItem.verses) {
       currentItem.verses.forEach((verse: BibleVerse) => {
         text += `Verse ${verse.verse}. ${verse.text} `;
       });
     } else {
-      text += currentItem.text;
+      text = currentItem.text || "";
     }
 
     return text;
   };
 
-  const handlePlay = async () => {
-    if (isPlaying && soundRef.current) {
-      // Pause
-      await soundRef.current.pauseAsync();
-      setIsPlaying(false);
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
+  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
+    if (!status.isLoaded) {
+      // Handle error
+      if (status.error) {
+        console.log("Playback error:", status.error);
+        setError("Playback error occurred");
+        setIsPlaying(false);
       }
       return;
     }
 
-    // If we have a paused sound, resume it
-    if (soundRef.current && progress > 0 && progress < 1) {
-      await soundRef.current.playAsync();
-      setIsPlaying(true);
-      startProgressTracking();
+    // Update progress
+    if (status.durationMillis && status.durationMillis > 0) {
+      const currentProgress = status.positionMillis / status.durationMillis;
+      setProgress(currentProgress);
+      setDuration(status.durationMillis / 1000);
+    }
+
+    // Handle playback finished
+    if (status.didJustFinish && !status.isLooping) {
+      console.log("Playback finished");
+      setIsPlaying(false);
+      setProgress(1);
+
+      // Auto-advance to next track
+      const idx = currentIndexRef.current;
+      if (idx < totalItems - 1) {
+        setTimeout(() => {
+          handleNext();
+        }, 1500);
+      } else {
+        markPlaylistCompleted(playlistId);
+      }
+    }
+  };
+
+  const handlePlay = async () => {
+    // If playing, pause
+    if (isPlaying && soundRef.current) {
+      console.log("Pausing playback");
+      await soundRef.current.pauseAsync();
+      setIsPlaying(false);
       return;
     }
 
-    // Generate new audio
+    // If we have a paused sound with progress, resume
+    if (soundRef.current && progress > 0 && progress < 1) {
+      console.log("Resuming playback");
+      await soundRef.current.playAsync();
+      setIsPlaying(true);
+      return;
+    }
+
+    // Generate and play new audio
     setIsLoading(true);
     setError(null);
 
     try {
+      // Cleanup any existing sound first
+      if (soundRef.current) {
+        console.log("Unloading previous sound");
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+
       const text = prepareText();
       console.log("Preparing to play audio, text length:", text.length);
+
+      if (!text || text.length === 0) {
+        throw new Error("No text to speak");
+      }
+
       const voice = (defaultVoice as TTSVoice) || "nova";
 
       const result = await generatePlaylistItemAudio(
@@ -161,88 +216,32 @@ export default function ListenModeScreen() {
       );
 
       console.log("Audio generated, URI:", result.audioUri);
-      console.log("Audio duration from TTS:", result.duration);
 
-      // Clean up any existing sound before creating new one
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-
-      // Load and play the audio
-      console.log("Creating audio sound...");
-      const { sound, status } = await Audio.Sound.createAsync(
+      // Create and load the sound
+      console.log("Creating sound object...");
+      const { sound } = await Audio.Sound.createAsync(
         { uri: result.audioUri },
-        { shouldPlay: true },
+        {
+          shouldPlay: true,
+          progressUpdateIntervalMillis: 500,
+        },
         onPlaybackStatusUpdate
       );
 
-      console.log("Sound created, initial status:", JSON.stringify(status));
-
-      // Explicitly call play to ensure playback starts
-      if (status.isLoaded && !status.isPlaying) {
-        console.log("Explicitly calling playAsync...");
-        await sound.playAsync();
-      }
-
-      console.log("Sound created successfully, starting playback");
+      // Store the sound reference
       soundRef.current = sound;
       setDuration(result.duration);
       setIsPlaying(true);
       setIsLoading(false);
 
-      startProgressTracking();
+      console.log("Playback started successfully");
 
     } catch (err) {
-      console.log("TTS error:", err);
-      setError("Failed to generate audio. Please try again.");
+      console.log("TTS/Playback error:", err);
+      setError("Failed to play audio. Please try again.");
       setIsLoading(false);
       setIsPlaying(false);
     }
-  };
-
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded) {
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        setProgress(1);
-        if (progressInterval.current) {
-          clearInterval(progressInterval.current);
-        }
-
-        // Auto-advance to next track
-        if (currentIndex < totalItems - 1) {
-          setTimeout(() => {
-            handleNext();
-          }, 1500);
-        } else {
-          markPlaylistCompleted(playlistId);
-        }
-      }
-    }
-  };
-
-  const startProgressTracking = () => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-    }
-
-    progressInterval.current = setInterval(async () => {
-      if (soundRef.current) {
-        const status = await soundRef.current.getStatusAsync();
-        if (status.isLoaded && status.durationMillis) {
-          const currentProgress = status.positionMillis / status.durationMillis;
-          setProgress(currentProgress);
-          setDuration(status.durationMillis / 1000);
-
-          updatePlaybackProgress(
-            playlistId,
-            currentItem.id,
-            status.positionMillis / 1000
-          );
-        }
-      }
-    }, 250);
   };
 
   const handleSeek = async (value: number) => {
@@ -255,7 +254,12 @@ export default function ListenModeScreen() {
 
   const handlePrevious = async () => {
     if (currentIndex > 0) {
-      await cleanup();
+      // Stop current audio
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
       setIsPlaying(false);
       setProgress(0);
       setDuration(0);
@@ -265,18 +269,27 @@ export default function ListenModeScreen() {
   };
 
   const handleNext = async () => {
-    if (currentIndex < totalItems - 1) {
-      await cleanup();
+    if (currentIndexRef.current < totalItems - 1) {
+      // Stop current audio
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
       setIsPlaying(false);
       setProgress(0);
       setDuration(0);
-      setCurrentIndex(currentIndex + 1);
+      setCurrentIndex(currentIndexRef.current + 1);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
   const handleClose = async () => {
-    await cleanup();
+    if (soundRef.current) {
+      await soundRef.current.stopAsync();
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
+    }
     navigation.goBack();
   };
 
