@@ -1,6 +1,5 @@
 import * as FileSystem from "expo-file-system";
 import { Audio } from "expo-av";
-import { getOpenAIClient } from "../api/openai";
 
 export type TTSVoice = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
 
@@ -64,7 +63,7 @@ async function getCachedAudio(cacheKey: string): Promise<string | null> {
 }
 
 /**
- * Generate TTS audio using OpenAI's API
+ * Generate TTS audio using OpenAI's API with direct fetch
  */
 export async function generateTTSAudio(
   text: string,
@@ -83,29 +82,52 @@ export async function generateTTSAudio(
     console.log("Using cached TTS audio");
     // Get duration from cached file
     const sound = new Audio.Sound();
-    await sound.loadAsync({ uri: cachedPath });
-    const status = await sound.getStatusAsync();
-    await sound.unloadAsync();
+    try {
+      await sound.loadAsync({ uri: cachedPath });
+      const status = await sound.getStatusAsync();
+      await sound.unloadAsync();
 
-    const duration = status.isLoaded ? (status.durationMillis || 0) / 1000 : 0;
-    return { audioUri: cachedPath, duration };
+      const duration = status.isLoaded ? (status.durationMillis || 0) / 1000 : 0;
+      return { audioUri: cachedPath, duration };
+    } catch (err) {
+      console.log("Error loading cached audio, regenerating:", err);
+      // If cache is corrupted, delete and regenerate
+      await FileSystem.deleteAsync(cachedPath, { idempotent: true });
+    }
   }
 
   console.log("Generating new TTS audio with OpenAI");
 
-  try {
-    const client = getOpenAIClient();
+  const OPENAI_API_KEY = process.env.EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY;
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not set");
+  }
 
-    // OpenAI TTS API call
-    const response = await client.audio.speech.create({
-      model: "tts-1",
-      voice: voice,
-      input: text,
-      speed: speed,
+  try {
+    // Use fetch directly for React Native compatibility
+    const response = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "tts-1",
+        voice: voice,
+        input: text,
+        speed: speed,
+      }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log("TTS API error response:", errorText);
+      throw new Error(`TTS generation failed: ${errorText}`);
+    }
 
     // Get the audio data as array buffer
     const arrayBuffer = await response.arrayBuffer();
+    console.log("Received audio data, size:", arrayBuffer.byteLength);
 
     // Convert to base64
     const bytes = new Uint8Array(arrayBuffer);
@@ -120,6 +142,7 @@ export async function generateTTSAudio(
     await FileSystem.writeAsStringAsync(filePath, base64, {
       encoding: FileSystem.EncodingType.Base64,
     });
+    console.log("Saved TTS audio to:", filePath);
 
     // Get audio duration
     const sound = new Audio.Sound();
@@ -128,6 +151,7 @@ export async function generateTTSAudio(
     await sound.unloadAsync();
 
     const duration = status.isLoaded ? (status.durationMillis || 0) / 1000 : 0;
+    console.log("Audio duration:", duration, "seconds");
 
     return { audioUri: filePath, duration };
   } catch (error) {
