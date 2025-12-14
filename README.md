@@ -40,10 +40,17 @@ Tap a topic to instantly generate a Scripture playlist with AI voice narration:
 - Shimmer (Female, soft gentle)
 
 ### Pre-built Modes
-- **Bedtime**: Calmer voice, longer pauses, peaceful passages
+- **Bedtime**: Calmer voice, longer pauses, peaceful passages with sleep timer
 - **Commute**: Standard pace, 15-30 min playlists
 - **Study**: Verse numbers spoken, focused passages
 - **Prayer Loop**: Loop selected passages for meditation
+
+### Sleep Timer
+Set a timer to automatically stop playback after:
+- 5, 10, 15, 30, 45, or 60 minutes
+- Perfect for bedtime listening
+- Visual indicator shows remaining time
+- Available in Listen Mode
 
 ### Deep Dive Study (NEW)
 Extended 60-120 minute study sessions with comprehensive content:
@@ -71,7 +78,12 @@ Extended 60-120 minute study sessions with comprehensive content:
 ### Library & Organization
 - Save and favorite playlists
 - Recent playlists
-- Search and filter
+- Search and filter by title, tags, description, or verse references
+- **Offline Mode**: Download playlists for offline listening
+  - Pre-cache all audio for a playlist
+  - Progress indicator during download
+  - Works without internet connection
+  - Visual indicator for downloaded playlists
 
 ## Project Structure
 
@@ -95,11 +107,12 @@ src/
 │   └── RootNavigator.tsx
 ├── services/         # Business logic
 │   ├── bibleParser.ts      # Reference parsing
-│   ├── bibleData.ts        # Bible text data
+│   ├── bibleData.ts        # Bible text data (KJV local, NIV API)
 │   ├── playlistCompiler.ts # Compile playlists
 │   ├── playlistGenerator.ts # AI generation
 │   ├── deepDiveGenerator.ts # Deep dive study generation
-│   └── ttsService.ts       # OpenAI TTS audio generation
+│   ├── ttsService.ts       # OpenAI TTS audio generation
+│   └── offlineService.ts   # Offline playlist downloads
 ├── state/            # Zustand stores
 │   ├── preferencesStore.ts
 │   └── playlistStore.ts
@@ -126,7 +139,10 @@ Using Zustand with AsyncStorage persistence:
 ## Translations
 
 - **KJV**: King James Version (stored locally)
-- **NIV**: New International Version (API-based, coming soon)
+- **NIV**: New International Version (API-based via API.Bible)
+  - Requires internet connection
+  - Fetched on-demand
+  - Automatic fallback to KJV if unavailable
 
 ## Tech Stack
 

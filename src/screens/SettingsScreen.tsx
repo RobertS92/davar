@@ -165,6 +165,7 @@ export default function SettingsScreen() {
             icon="language"
             title="Default Translation"
             value={preferences.defaultTranslation}
+            subtitle={preferences.defaultTranslation === "NIV" ? "Requires internet connection" : undefined}
             onPress={() => setShowTranslationPicker(true)}
           />
           <SettingRow
@@ -316,6 +317,9 @@ export default function SettingsScreen() {
             }`}
           >
             <Text className="text-white font-medium">{t.label}</Text>
+            {t.value === "NIV" && (
+              <Text className="text-neutral-400 text-sm mt-1">Requires internet connection</Text>
+            )}
           </Pressable>
         ))
       )}

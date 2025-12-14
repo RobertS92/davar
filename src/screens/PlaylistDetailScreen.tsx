@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { View, Text, ScrollView, Pressable, Share } from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, Text, ScrollView, Pressable, Share, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -11,6 +11,12 @@ import { RootStackParamList } from "../navigation/RootNavigator";
 import { usePlaylistStore, getPlaylistById } from "../state/playlistStore";
 import { usePreferencesStore } from "../state/preferencesStore";
 import { PlaylistItem } from "../types/bible";
+import {
+  downloadPlaylistForOffline,
+  removeOfflinePlaylist,
+  getDownloadSizeEstimate,
+  DownloadProgress,
+} from "../services/offlineService";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, "PlaylistDetail">;
@@ -26,6 +32,9 @@ export default function PlaylistDetailScreen() {
   const deletePlaylist = usePlaylistStore((s) => s.deletePlaylist);
   const addToRecent = usePlaylistStore((s) => s.addToRecent);
   const defaultMode = usePreferencesStore((s) => s.defaultConsumptionMode);
+
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   const playlist = useMemo(
     () => getPlaylistById(playlists, playlistId),
@@ -80,6 +89,28 @@ export default function PlaylistDetailScreen() {
     navigation.goBack();
   };
 
+  const handleDownload = async () => {
+    if (!playlist) return;
+
+    setShowDownloadModal(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    await downloadPlaylistForOffline(playlist, (progress) => {
+      setDownloadProgress(progress);
+    });
+
+    setTimeout(() => {
+      setShowDownloadModal(false);
+      setDownloadProgress(null);
+    }, 1500);
+  };
+
+  const handleRemoveDownload = async () => {
+    if (!playlist) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await removeOfflinePlaylist(playlist.id);
+  };
+
   return (
     <View className="flex-1 bg-neutral-950">
       {/* Header with gradient */}
@@ -95,6 +126,16 @@ export default function PlaylistDetailScreen() {
             <Ionicons name="chevron-back" size={28} color="white" />
           </Pressable>
           <View className="flex-row gap-4">
+            <Pressable
+              onPress={playlist.isDownloaded ? handleRemoveDownload : handleDownload}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={playlist.isDownloaded ? "cloud-done" : "cloud-download-outline"}
+                size={24}
+                color={playlist.isDownloaded ? "#10b981" : "white"}
+              />
+            </Pressable>
             <Pressable onPress={handleShare} hitSlop={8}>
               <Ionicons name="share-outline" size={24} color="white" />
             </Pressable>
@@ -205,6 +246,60 @@ export default function PlaylistDetailScreen() {
           <Text className="text-red-500 font-medium">Delete Playlist</Text>
         </Pressable>
       </ScrollView>
+
+      {/* Download Progress Modal */}
+      {showDownloadModal && (
+        <View className="absolute inset-0 bg-black/80 items-center justify-center z-50">
+          <View className="bg-neutral-900 rounded-2xl p-6 w-[85%] max-w-sm">
+            <View className="items-center mb-4">
+              {downloadProgress?.isComplete ? (
+                <View className="w-16 h-16 rounded-full bg-green-500/20 items-center justify-center">
+                  <Ionicons name="checkmark-circle" size={40} color="#10b981" />
+                </View>
+              ) : (
+                <ActivityIndicator size="large" color="#6366f1" />
+              )}
+            </View>
+
+            <Text className="text-white text-lg font-semibold text-center mb-2">
+              {downloadProgress?.isComplete
+                ? "Download Complete"
+                : "Downloading for Offline"}
+            </Text>
+
+            {downloadProgress && !downloadProgress.isComplete && (
+              <>
+                <Text className="text-neutral-400 text-center mb-4">
+                  {downloadProgress.currentItem}
+                </Text>
+                <View className="bg-neutral-800 h-2 rounded-full overflow-hidden">
+                  <View
+                    className="bg-indigo-500 h-full"
+                    style={{
+                      width: `${(downloadProgress.current / downloadProgress.total) * 100}%`,
+                    }}
+                  />
+                </View>
+                <Text className="text-neutral-500 text-sm text-center mt-2">
+                  {downloadProgress.current} of {downloadProgress.total} passages
+                </Text>
+              </>
+            )}
+
+            {downloadProgress?.isComplete && (
+              <Text className="text-neutral-400 text-center mt-2">
+                Your playlist is now available offline
+              </Text>
+            )}
+
+            {downloadProgress?.error && (
+              <Text className="text-red-500 text-center mt-2">
+                {downloadProgress.error}
+              </Text>
+            )}
+          </View>
+        </View>
+      )}
     </View>
   );
 }

@@ -47,6 +47,9 @@ export default function ListenModeScreen() {
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSleepTimer, setShowSleepTimer] = useState(false);
+  const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
+  const [sleepTimerEndTime, setSleepTimerEndTime] = useState<number | null>(null);
 
   // Use refs to avoid stale closure issues
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -54,6 +57,7 @@ export default function ListenModeScreen() {
   const isLoadingRef = useRef(isLoading);
   const hasStartedRef = useRef(false);
   const shouldContinuePlayingRef = useRef(true);
+  const sleepTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -90,6 +94,9 @@ export default function ListenModeScreen() {
       shouldContinuePlayingRef.current = false;
       if (soundRef.current) {
         soundRef.current.unloadAsync();
+      }
+      if (sleepTimerRef.current) {
+        clearTimeout(sleepTimerRef.current);
       }
     };
   }, []);
@@ -348,7 +355,46 @@ export default function ListenModeScreen() {
       await soundRef.current.unloadAsync();
       soundRef.current = null;
     }
+    if (sleepTimerRef.current) {
+      clearTimeout(sleepTimerRef.current);
+    }
     navigation.goBack();
+  };
+
+  const startSleepTimer = (minutes: number) => {
+    // Clear existing timer
+    if (sleepTimerRef.current) {
+      clearTimeout(sleepTimerRef.current);
+    }
+
+    setSleepTimerMinutes(minutes);
+    setSleepTimerEndTime(Date.now() + minutes * 60 * 1000);
+    setShowSleepTimer(false);
+
+    sleepTimerRef.current = setTimeout(async () => {
+      // Stop playback when timer expires
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        setIsPlaying(false);
+      }
+      setSleepTimerMinutes(null);
+      setSleepTimerEndTime(null);
+    }, minutes * 60 * 1000);
+  };
+
+  const cancelSleepTimer = () => {
+    if (sleepTimerRef.current) {
+      clearTimeout(sleepTimerRef.current);
+      sleepTimerRef.current = null;
+    }
+    setSleepTimerMinutes(null);
+    setSleepTimerEndTime(null);
+  };
+
+  const getRemainingTime = () => {
+    if (!sleepTimerEndTime) return "";
+    const remaining = Math.max(0, Math.ceil((sleepTimerEndTime - Date.now()) / 60000));
+    return `${remaining} min`;
   };
 
   const currentVoice = VOICE_OPTIONS.find((v) => v.id === defaultVoice) || VOICE_OPTIONS[4];
@@ -373,12 +419,24 @@ export default function ListenModeScreen() {
             <Text className="text-white/60 text-sm">NOW PLAYING</Text>
             <Text className="text-white font-medium">{playlist.title}</Text>
           </View>
-          <Pressable
-            onPress={() => navigation.navigate("ReadMode", { playlistId, startFromItem: currentItem.id })}
-            hitSlop={8}
-          >
-            <Ionicons name="book-outline" size={24} color="white" />
-          </Pressable>
+          <View className="flex-row gap-4">
+            <Pressable
+              onPress={() => setShowSleepTimer(true)}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={sleepTimerMinutes ? "moon" : "moon-outline"}
+                size={24}
+                color={sleepTimerMinutes ? "#6366f1" : "white"}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate("ReadMode", { playlistId, startFromItem: currentItem.id })}
+              hitSlop={8}
+            >
+              <Ionicons name="book-outline" size={24} color="white" />
+            </Pressable>
+          </View>
         </View>
 
         {/* Album Art / Visualization */}
@@ -484,9 +542,71 @@ export default function ListenModeScreen() {
 
         {/* Speed Indicator */}
         <View className="items-center pb-4">
-          <Text className="text-white/40 text-sm">{playbackSpeed}x speed</Text>
+          <Text className="text-white/40 text-sm">
+            {playbackSpeed}x speed
+            {sleepTimerMinutes && ` • Sleep timer: ${getRemainingTime()}`}
+          </Text>
         </View>
       </LinearGradient>
+
+      {/* Sleep Timer Modal */}
+      {showSleepTimer && (
+        <Pressable
+          onPress={() => setShowSleepTimer(false)}
+          className="absolute inset-0 bg-black/70 items-center justify-end z-50"
+          style={{ paddingBottom: insets.bottom + 20 }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            className="bg-neutral-900 rounded-t-3xl w-full px-6 py-6"
+          >
+            <View className="flex-row items-center justify-between mb-6">
+              <Text className="text-white text-xl font-bold">Sleep Timer</Text>
+              <Pressable onPress={() => setShowSleepTimer(false)} hitSlop={8}>
+                <Ionicons name="close" size={28} color="#9ca3af" />
+              </Pressable>
+            </View>
+
+            {sleepTimerMinutes ? (
+              <View className="items-center py-6">
+                <View className="w-20 h-20 rounded-full bg-indigo-500/20 items-center justify-center mb-4">
+                  <Ionicons name="moon" size={40} color="#6366f1" />
+                </View>
+                <Text className="text-white text-lg font-semibold mb-2">
+                  Timer Active
+                </Text>
+                <Text className="text-neutral-400 text-base mb-6">
+                  Playback will stop in {getRemainingTime()}
+                </Text>
+                <Pressable
+                  onPress={cancelSleepTimer}
+                  className="bg-red-500/20 border border-red-500 px-6 py-3 rounded-xl"
+                >
+                  <Text className="text-red-500 font-semibold">Cancel Timer</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View>
+                <Text className="text-neutral-400 mb-4">
+                  Automatically stop playback after:
+                </Text>
+                {[5, 10, 15, 30, 45, 60].map((minutes) => (
+                  <Pressable
+                    key={minutes}
+                    onPress={() => startSleepTimer(minutes)}
+                    className="bg-neutral-800 rounded-xl p-4 mb-2 active:opacity-80"
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-white text-lg">{minutes} minutes</Text>
+                      <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      )}
     </View>
   );
 }
