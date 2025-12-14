@@ -17,12 +17,17 @@ import OnboardingScreen from "../screens/OnboardingScreen";
 import ModesScreen from "../screens/ModesScreen";
 import EditPlaylistScreen from "../screens/EditPlaylistScreen";
 import DeepDiveStudyScreen from "../screens/DeepDiveStudyScreen";
+import SignInScreen from "../screens/SignInScreen";
+import SignUpScreen from "../screens/SignUpScreen";
 
 // Store
 import { usePreferencesStore } from "../state/preferencesStore";
+import { useUserStore } from "../state/userStore";
 
 export type RootStackParamList = {
   Onboarding: undefined;
+  SignIn: undefined;
+  SignUp: undefined;
   MainTabs: undefined;
   CreatePlaylist: undefined;
   PromptPlaylist: { mode?: string };
@@ -95,10 +100,22 @@ function TabNavigator() {
 
 export default function RootNavigator() {
   const hasCompletedOnboarding = usePreferencesStore(s => s.hasCompletedOnboarding);
+  const user = useUserStore(s => s.user);
+  const hasSeenAuthPrompt = useUserStore(s => s.hasSeenAuthPrompt);
+
+  // Determine initial route
+  let initialRoute: keyof RootStackParamList = "Onboarding";
+  if (hasCompletedOnboarding) {
+    if (user || hasSeenAuthPrompt) {
+      initialRoute = "MainTabs";
+    } else {
+      initialRoute = "SignIn";
+    }
+  }
 
   return (
     <Stack.Navigator
-      initialRouteName={hasCompletedOnboarding ? "MainTabs" : "Onboarding"}
+      initialRouteName={initialRoute}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: "#0a0a0a" },
@@ -106,6 +123,8 @@ export default function RootNavigator() {
       }}
     >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      <Stack.Screen name="SignIn" component={SignInScreen} />
+      <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="MainTabs" component={TabNavigator} />
       <Stack.Screen
         name="CreatePlaylist"
