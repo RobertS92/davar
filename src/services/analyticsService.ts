@@ -1,8 +1,14 @@
 import * as Device from "expo-device";
 import * as Application from "expo-application";
 import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://your-backend-api.com";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+
+// Check if backend is configured
+const isBackendConfigured = (): boolean => {
+  return !!API_BASE_URL && !API_BASE_URL.includes("your-backend");
+};
 
 export interface AnalyticsEvent {
   eventName: string;
@@ -38,10 +44,12 @@ class AnalyticsService {
     this.sessionId = this.generateSessionId();
     this.sessionStartTime = Date.now();
 
-    // Start auto-flush every 30 seconds
-    this.flushInterval = setInterval(() => {
-      this.flushEvents();
-    }, 30000);
+    // Start auto-flush every 30 seconds if backend is configured
+    if (isBackendConfigured()) {
+      this.flushInterval = setInterval(() => {
+        this.flushEvents();
+      }, 30000);
+    }
 
     // Track app open
     this.trackEvent("app_opened");
@@ -51,7 +59,6 @@ class AnalyticsService {
     if (this.flushInterval) {
       clearInterval(this.flushInterval);
     }
-    await this.flushEvents();
 
     // Track app closed with session duration
     if (this.sessionStartTime) {
@@ -60,6 +67,8 @@ class AnalyticsService {
         sessionDuration: Math.floor(duration / 1000)
       });
     }
+
+    await this.flushEvents();
   }
 
   trackEvent(eventName: string, properties?: Record<string, any>) {
@@ -73,30 +82,98 @@ class AnalyticsService {
 
     this.eventsQueue.push(event);
 
-    // Auto flush if queue is getting large
-    if (this.eventsQueue.length >= 20) {
+    // Store locally for offline analytics
+    this.storeEventLocally(event);
+
+    // Auto flush if queue is getting large and backend is available
+    if (this.eventsQueue.length >= 20 && isBackendConfigured()) {
       this.flushEvents();
+    }
+  }
+
+  private async storeEventLocally(event: AnalyticsEvent) {
+    try {
+      const stored = await AsyncStorage.getItem("local_analytics");
+      const events: AnalyticsEvent[] = stored ? JSON.parse(stored) : [];
+      events.push(event);
+      // Keep only last 500 events locally
+      const trimmed = events.slice(-500);
+      await AsyncStorage.setItem("local_analytics", JSON.stringify(trimmed));
+    } catch (error) {
+      // Ignore storage errors
     }
   }
 
   async flushEvents() {
     if (this.eventsQueue.length === 0) return;
+    if (!isBackendConfigured()) {
+      // No backend, just clear queue (events are stored locally)
+      this.eventsQueue = [];
+      return;
+    }
 
     const events = [...this.eventsQueue];
     this.eventsQueue = [];
 
     try {
-      await fetch(`${API_BASE_URL}/analytics/events`, {
+      const response = await fetch(`${API_BASE_URL}/analytics/events`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ events }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to send analytics");
+      }
     } catch (error) {
-      console.error("Failed to send analytics:", error);
       // Re-queue events on failure (max 100 to prevent memory issues)
       this.eventsQueue = [...events, ...this.eventsQueue].slice(0, 100);
+    }
+  }
+
+  // Get local analytics summary (for when no backend)
+  async getLocalAnalyticsSummary() {
+    try {
+      const stored = await AsyncStorage.getItem("local_analytics");
+      const events: AnalyticsEvent[] = stored ? JSON.parse(stored) : [];
+
+      const summary = {
+        totalEvents: events.length,
+        uniqueSessions: new Set(events.map(e => e.sessionId)).size,
+        eventCounts: {} as Record<string, number>,
+        featureUsage: {} as Record<string, number>,
+        stationUsage: {} as Record<string, number>,
+        modeUsage: {} as Record<string, number>,
+      };
+
+      events.forEach(event => {
+        // Count events
+        summary.eventCounts[event.eventName] = (summary.eventCounts[event.eventName] || 0) + 1;
+
+        // Track feature usage
+        if (event.eventName === "feature_used" && event.properties?.feature) {
+          summary.featureUsage[event.properties.feature] =
+            (summary.featureUsage[event.properties.feature] || 0) + 1;
+        }
+
+        // Track station usage
+        if (event.eventName === "station_used" && event.properties?.station) {
+          summary.stationUsage[event.properties.station] =
+            (summary.stationUsage[event.properties.station] || 0) + 1;
+        }
+
+        // Track mode usage
+        if (event.eventName === "mode_used" && event.properties?.mode) {
+          summary.modeUsage[event.properties.mode] =
+            (summary.modeUsage[event.properties.mode] || 0) + 1;
+        }
+      });
+
+      return summary;
+    } catch (error) {
+      return null;
     }
   }
 
@@ -188,6 +265,10 @@ class AnalyticsService {
   getSessionDuration(): number {
     if (!this.sessionStartTime) return 0;
     return Math.floor((Date.now() - this.sessionStartTime) / 1000);
+  }
+
+  isBackendAvailable(): boolean {
+    return isBackendConfigured();
   }
 }
 
