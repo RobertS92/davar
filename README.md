@@ -138,11 +138,10 @@ Using Zustand with AsyncStorage persistence:
 
 ## Translations
 
-- **KJV**: King James Version (stored locally)
-- **NIV**: New International Version (API-based via API.Bible)
-  - Requires internet connection
-  - Fetched on-demand
-  - Automatic fallback to KJV if unavailable
+- **KJV**: King James Version (default, stored locally)
+- **NIV**: New International Version (optional, requires API key from api.bible)
+  - To enable NIV: Add `EXPO_PUBLIC_BIBLE_API_KEY` to your environment variables
+  - NIV option will automatically appear in settings when API key is configured
 
 ## Tech Stack
 

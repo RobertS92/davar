@@ -51,11 +51,16 @@ async function fetchNIVVerses(ref: BibleReference): Promise<BibleVerse[]> {
         ? `${bookAbbrev}.${chapter}.${verseRange}`
         : `${bookAbbrev}.${chapter}`;
 
+      const apiKey = process.env.EXPO_PUBLIC_BIBLE_API_KEY;
+      if (!apiKey) {
+        throw new Error("Bible API key not configured");
+      }
+
       const response = await fetch(
         `https://api.scripture.api.bible/v1/bibles/de4e12af7f28f599-02/passages/${passageId}?content-type=text&include-verse-numbers=false`,
         {
           headers: {
-            "api-key": process.env.EXPO_PUBLIC_BIBLE_API_KEY || "demo-key"
+            "api-key": apiKey
           }
         }
       );

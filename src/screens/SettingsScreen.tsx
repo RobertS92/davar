@@ -25,10 +25,14 @@ export default function SettingsScreen() {
   const [showPausePicker, setShowPausePicker] = useState(false);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
 
-  const translations: { value: Translation; label: string }[] = [
-    { value: "KJV", label: "King James Version" },
-    { value: "NIV", label: "New International Version" },
-  ];
+  // Only show NIV if API key is configured
+  const bibleApiKey = process.env.EXPO_PUBLIC_BIBLE_API_KEY;
+  const translations: { value: Translation; label: string }[] = bibleApiKey
+    ? [
+        { value: "KJV", label: "King James Version" },
+        { value: "NIV", label: "New International Version" },
+      ]
+    : [{ value: "KJV", label: "King James Version" }];
 
   const speeds: PlaybackSpeed[] = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 
