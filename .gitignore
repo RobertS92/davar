@@ -39,3 +39,9 @@ android/
 
 # Expo log
 expo.log
+
+# Local secrets and backend data
+.env
+backend/.env
+backend/scripture.db
+backend/node_modules/

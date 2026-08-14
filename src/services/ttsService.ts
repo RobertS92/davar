@@ -1,5 +1,6 @@
 import * as FileSystem from "expo-file-system";
 import { Audio } from "expo-av";
+import { requireOpenAIApiKey } from "../api/config";
 
 export type TTSVoice = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
 
@@ -96,15 +97,9 @@ export async function generateTTSAudio(
     }
   }
 
-  console.log("Generating new TTS audio with OpenAI");
-
-  const OPENAI_API_KEY = process.env.EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY;
-  if (!OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not set");
-  }
+  const OPENAI_API_KEY = requireOpenAIApiKey();
 
   try {
-    // Use fetch directly for React Native compatibility
     const response = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: {
@@ -121,15 +116,16 @@ export async function generateTTSAudio(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.log("TTS API error response:", errorText);
-      throw new Error(`TTS generation failed: ${errorText}`);
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(
+          "AI voice key was rejected. Update EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY with a valid OpenAI key."
+        );
+      }
+      throw new Error(`TTS generation failed (${response.status}). Try again in a moment.`);
     }
 
-    // Get the audio data as array buffer
     const arrayBuffer = await response.arrayBuffer();
-    console.log("Received audio data, size:", arrayBuffer.byteLength);
 
-    // Convert to base64
     const bytes = new Uint8Array(arrayBuffer);
     let binary = "";
     for (let i = 0; i < bytes.byteLength; i++) {
@@ -137,26 +133,24 @@ export async function generateTTSAudio(
     }
     const base64 = btoa(binary);
 
-    // Save to cache
     const filePath = `${TTS_CACHE_DIR}${cacheKey}`;
     await FileSystem.writeAsStringAsync(filePath, base64, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    console.log("Saved TTS audio to:", filePath);
 
-    // Get audio duration
     const sound = new Audio.Sound();
     await sound.loadAsync({ uri: filePath });
     const status = await sound.getStatusAsync();
     await sound.unloadAsync();
 
     const duration = status.isLoaded ? (status.durationMillis || 0) / 1000 : 0;
-    console.log("Audio duration:", duration, "seconds");
 
     return { audioUri: filePath, duration };
   } catch (error) {
-    console.log("TTS generation error:", error);
-    throw error;
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Could not generate audio. Check your connection and try again.");
   }
 }
 

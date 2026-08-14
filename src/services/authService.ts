@@ -1,7 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+import { getApiBaseUrl, isBackendConfigured } from "../api/config";
 
 export interface User {
   id: string;
@@ -16,12 +15,6 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-// Check if backend is configured
-const isBackendConfigured = (): boolean => {
-  return !!API_BASE_URL && !API_BASE_URL.includes("your-backend");
-};
-
-// Generate a simple ID
 const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
@@ -31,42 +24,45 @@ class AuthService {
 
   async initialize(): Promise<User | null> {
     try {
-      // Try to load user from local storage first
       const storedUser = await AsyncStorage.getItem("local_user");
       if (storedUser) {
         this.currentUser = JSON.parse(storedUser);
-        return this.currentUser;
       }
 
-      // If backend is configured, try to verify token
       if (isBackendConfigured()) {
         const token = await SecureStore.getItemAsync("auth_token");
         if (token) {
-          const user = await this.verifyToken(token);
-          this.currentUser = user;
-          return user;
+          try {
+            const user = await this.verifyToken(token);
+            this.currentUser = user;
+            await AsyncStorage.setItem("local_user", JSON.stringify(user));
+            return user;
+          } catch {
+            // Token invalid — keep local user if present
+          }
         }
       }
-    } catch (error) {
-      console.log("Auth initialization - no existing session");
+
+      return this.currentUser;
+    } catch {
+      return null;
     }
-    return null;
   }
 
   async signUp(email: string, password: string, displayName?: string): Promise<User> {
-    // If backend is not configured, create local user
-    if (!isBackendConfigured()) {
+    const baseUrl = getApiBaseUrl();
+
+    if (!isBackendConfigured() || !baseUrl) {
       return this.createLocalUser(email, displayName);
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      const response = await fetch(`${baseUrl}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, displayName }),
       });
 
-      // Check if response is JSON
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         throw new Error("Backend server not available. Creating local account.");
@@ -81,28 +77,39 @@ class AuthService {
       await this.storeTokens(data.tokens);
       this.currentUser = data.user;
       await AsyncStorage.setItem("local_user", JSON.stringify(data.user));
+      await AsyncStorage.setItem("local_user_email", email);
 
       return data.user;
     } catch (error) {
-      console.log("Backend unavailable, creating local user");
+      if (error instanceof Error && error.message && !error.message.includes("Backend")) {
+        // Real API validation errors should surface
+        if (
+          error.message.toLowerCase().includes("email") ||
+          error.message.toLowerCase().includes("password") ||
+          error.message.toLowerCase().includes("required") ||
+          error.message.toLowerCase().includes("registered")
+        ) {
+          throw error;
+        }
+      }
       return this.createLocalUser(email, displayName);
     }
   }
 
   async signIn(email: string, password: string): Promise<User> {
-    // If backend is not configured, check local user
-    if (!isBackendConfigured()) {
-      return this.signInLocal(email);
+    const baseUrl = getApiBaseUrl();
+
+    if (!isBackendConfigured() || !baseUrl) {
+      return this.signInLocal(email, password);
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+      const response = await fetch(`${baseUrl}/auth/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      // Check if response is JSON
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         throw new Error("Backend server not available");
@@ -117,11 +124,14 @@ class AuthService {
       await this.storeTokens(data.tokens);
       this.currentUser = data.user;
       await AsyncStorage.setItem("local_user", JSON.stringify(data.user));
+      await AsyncStorage.setItem("local_user_email", email);
 
       return data.user;
     } catch (error) {
-      // Try local sign in as fallback
-      return this.signInLocal(email);
+      if (error instanceof Error && error.message === "Invalid credentials") {
+        throw error;
+      }
+      return this.signInLocal(email, password);
     }
   }
 
@@ -129,7 +139,7 @@ class AuthService {
     const now = new Date().toISOString();
     const user: User = {
       id: generateId(),
-      email,
+      email: email.trim().toLowerCase(),
       displayName: displayName || email.split("@")[0],
       createdAt: now,
       lastLoginAt: now,
@@ -137,41 +147,41 @@ class AuthService {
 
     this.currentUser = user;
     await AsyncStorage.setItem("local_user", JSON.stringify(user));
-    await AsyncStorage.setItem("local_user_email", email);
-
+    await AsyncStorage.setItem("local_user_email", user.email);
     return user;
   }
 
-  private async signInLocal(email: string): Promise<User> {
+  private async signInLocal(email: string, _password?: string): Promise<User> {
+    const normalized = email.trim().toLowerCase();
     const storedEmail = await AsyncStorage.getItem("local_user_email");
     const storedUser = await AsyncStorage.getItem("local_user");
 
-    if (storedUser && storedEmail === email) {
-      const user = JSON.parse(storedUser);
+    if (storedUser && storedEmail === normalized) {
+      const user = JSON.parse(storedUser) as User;
       user.lastLoginAt = new Date().toISOString();
       this.currentUser = user;
       await AsyncStorage.setItem("local_user", JSON.stringify(user));
       return user;
     }
 
-    // Create new local user if none exists
-    return this.createLocalUser(email);
+    return this.createLocalUser(normalized);
   }
 
   async signOut(): Promise<void> {
     try {
-      if (isBackendConfigured()) {
+      const baseUrl = getApiBaseUrl();
+      if (isBackendConfigured() && baseUrl) {
         const token = await SecureStore.getItemAsync("auth_token");
         if (token) {
-          await fetch(`${API_BASE_URL}/auth/signout`, {
+          await fetch(`${baseUrl}/auth/signout`, {
             method: "POST",
             headers: {
-              "Authorization": `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
             },
           }).catch(() => {});
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore sign out errors
     } finally {
       await this.clearTokens();
@@ -182,13 +192,14 @@ class AuthService {
   }
 
   async verifyToken(token: string): Promise<User> {
-    if (!isBackendConfigured()) {
+    const baseUrl = getApiBaseUrl();
+    if (!isBackendConfigured() || !baseUrl) {
       throw new Error("Backend not configured");
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+    const response = await fetch(`${baseUrl}/auth/verify`, {
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 

@@ -1,5 +1,6 @@
 import { BibleReference, BibleVerse, Translation } from "../types/bible";
 import { KJV_BIBLE } from "../data/kjvBible";
+import { getBibleApiKey, isNivConfigured } from "../api/config";
 
 /**
  * Fetch NIV verses from API.Bible
@@ -51,9 +52,11 @@ async function fetchNIVVerses(ref: BibleReference): Promise<BibleVerse[]> {
         ? `${bookAbbrev}.${chapter}.${verseRange}`
         : `${bookAbbrev}.${chapter}`;
 
-      const apiKey = process.env.EXPO_PUBLIC_BIBLE_API_KEY;
+      const apiKey = getBibleApiKey();
       if (!apiKey) {
-        throw new Error("Bible API key not configured");
+        throw new Error(
+          "NIV is not configured. Add EXPO_PUBLIC_BIBLE_API_KEY from api.bible to enable NIV."
+        );
       }
 
       const response = await fetch(
@@ -105,11 +108,14 @@ export async function getBibleText(
 ): Promise<BibleVerse[]> {
   // Handle NIV with API
   if (translation === "NIV") {
-    try {
-      return await fetchNIVVerses(ref);
-    } catch (error) {
-      console.log("NIV fetch failed, falling back to KJV:", error);
-      // Fall back to KJV if NIV fails
+    if (!isNivConfigured()) {
+      // Fall back to KJV when NIV key is missing
+    } else {
+      try {
+        return await fetchNIVVerses(ref);
+      } catch {
+        // Fall back to KJV if NIV fails
+      }
     }
   }
 

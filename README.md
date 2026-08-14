@@ -143,13 +143,24 @@ Using Zustand with AsyncStorage persistence:
   - To enable NIV: Add `EXPO_PUBLIC_BIBLE_API_KEY` to your environment variables
   - NIV option will automatically appear in settings when API key is configured
 
-## Tech Stack
+## Environment
 
-- Expo SDK 53
-- React Native 0.76
-- TypeScript
-- NativeWind (TailwindCSS)
-- Zustand for state
-- OpenAI TTS API for AI voice generation
-- expo-av for audio playback
-- react-native-pager-view for reading cards
+Copy `.env.example` to `.env` and fill in keys:
+
+- `EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY` — required for AI playlist generation and Listen Mode TTS
+- `EXPO_PUBLIC_API_URL` — optional hosted backend URL for cloud auth/sync (or set it in Settings)
+- `EXPO_PUBLIC_BIBLE_API_KEY` — optional api.bible key to enable NIV
+
+Placeholder values are ignored. Settings → Services shows live configuration status.
+
+## Backend
+
+The Express backend in `backend/` provides auth, playlist sync, and analytics.
+
+```bash
+cd backend
+npm install
+npm start
+```
+
+Then set `EXPO_PUBLIC_API_URL` (or Settings → Cloud Backend) to that server URL.
