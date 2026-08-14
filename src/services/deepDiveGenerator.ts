@@ -187,9 +187,11 @@ Return the JSON response with:
 
     return parsed;
   } catch (error) {
-    console.log("Deep dive generation error:", error);
+    if (error instanceof Error && error.message.includes("not configured")) {
+      throw error;
+    }
 
-    // Return a fallback based on topic
+    // Return a fallback based on topic for transient AI/parse failures
     return getFallbackPlaylist(topic, type, duration);
   }
 }

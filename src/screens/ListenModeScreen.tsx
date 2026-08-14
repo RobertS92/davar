@@ -259,8 +259,11 @@ export default function ListenModeScreen() {
       console.log("Playback started successfully for:", item.title);
 
     } catch (err) {
-      console.log("TTS/Playback error:", err);
-      setError("Failed to play audio. Please try again.");
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to play audio. Please try again.";
+      setError(message);
       setIsLoading(false);
       isLoadingRef.current = false;
       setIsPlaying(false);

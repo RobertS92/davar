@@ -33,6 +33,9 @@ interface PreferencesState {
   // App state
   hasCompletedOnboarding: boolean;
 
+  // Optional cloud backend override (falls back to EXPO_PUBLIC_API_URL)
+  apiBaseUrlOverride: string;
+
   // Actions
   setDefaultTranslation: (translation: Translation) => void;
   setDefaultConsumptionMode: (mode: ConsumptionMode) => void;
@@ -47,6 +50,7 @@ interface PreferencesState {
   setNightMode: (night: boolean) => void;
   setShowVerseNumbersInRead: (show: boolean) => void;
   setHasCompletedOnboarding: (completed: boolean) => void;
+  setApiBaseUrlOverride: (url: string) => void;
   resetPreferences: () => void;
 }
 
@@ -64,6 +68,7 @@ const defaultPreferences = {
   nightMode: true,
   showVerseNumbersInRead: true,
   hasCompletedOnboarding: false,
+  apiBaseUrlOverride: "",
 };
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -97,12 +102,30 @@ export const usePreferencesStore = create<PreferencesState>()(
         set({ showVerseNumbersInRead: show }),
       setHasCompletedOnboarding: (completed) =>
         set({ hasCompletedOnboarding: completed }),
+      setApiBaseUrlOverride: (url) =>
+        set({ apiBaseUrlOverride: url.trim() }),
       resetPreferences: () =>
         set(defaultPreferences),
     }),
     {
       name: "scripture-preferences",
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        defaultTranslation: state.defaultTranslation,
+        defaultConsumptionMode: state.defaultConsumptionMode,
+        defaultVoice: state.defaultVoice,
+        playbackSpeed: state.playbackSpeed,
+        pauseStyle: state.pauseStyle,
+        speakVerseNumbers: state.speakVerseNumbers,
+        announceBookChapter: state.announceBookChapter,
+        defaultPlaylistLength: state.defaultPlaylistLength,
+        preferredModes: state.preferredModes,
+        textSize: state.textSize,
+        nightMode: state.nightMode,
+        showVerseNumbersInRead: state.showVerseNumbersInRead,
+        hasCompletedOnboarding: state.hasCompletedOnboarding,
+        apiBaseUrlOverride: state.apiBaseUrlOverride,
+      }),
     }
   )
 );

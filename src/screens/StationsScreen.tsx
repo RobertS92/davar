@@ -197,8 +197,7 @@ export default function StationsScreen() {
       navigation.navigate("ListenMode", { playlistId: playlist.id });
 
     } catch (err) {
-      console.log("Station error:", err);
-      setError("Failed to generate station. Please try again.");
+      setError(err instanceof Error ? err.message : "Failed to generate station. Please try again.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setLoadingStation(null);

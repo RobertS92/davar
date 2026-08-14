@@ -1,15 +1,34 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, Pressable, Switch } from "react-native";
+import React, { useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  Switch,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { usePreferencesStore } from "../state/preferencesStore";
 import { usePlaylistStore } from "../state/playlistStore";
+import { useUserStore } from "../state/userStore";
 import { Translation, PlaybackSpeed, PauseStyle } from "../types/bible";
-import { VOICE_OPTIONS, TTSVoice } from "../services/ttsService";
+import { VOICE_OPTIONS } from "../services/ttsService";
+import {
+  getEnvApiBaseUrl,
+  getServiceStatus,
+  isNivConfigured,
+  setRuntimeApiBaseUrl,
+} from "../api/config";
+import { authService } from "../services/authService";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -19,15 +38,25 @@ export default function SettingsScreen() {
 
   const preferences = usePreferencesStore();
   const playlists = usePlaylistStore((s) => s.playlists);
+  const syncWithCloud = usePlaylistStore((s) => s.syncWithCloud);
+  const syncStatus = usePlaylistStore((s) => s.syncStatus);
+  const syncError = usePlaylistStore((s) => s.syncError);
+  const lastSyncAt = usePlaylistStore((s) => s.lastSyncAt);
+  const user = useUserStore((s) => s.user);
+  const setUser = useUserStore((s) => s.setUser);
+  const clearUser = useUserStore((s) => s.clearUser);
 
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [showSpeedPicker, setShowSpeedPicker] = useState(false);
   const [showPausePicker, setShowPausePicker] = useState(false);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
+  const [showBackendEditor, setShowBackendEditor] = useState(false);
+  const [backendDraft, setBackendDraft] = useState(preferences.apiBaseUrlOverride);
+  const [backendMessage, setBackendMessage] = useState<string | null>(null);
 
-  // Only show NIV if API key is configured
-  const bibleApiKey = process.env.EXPO_PUBLIC_BIBLE_API_KEY;
-  const translations: { value: Translation; label: string }[] = bibleApiKey
+  const serviceStatus = useMemo(() => getServiceStatus(), [preferences.apiBaseUrlOverride, showBackendEditor]);
+
+  const translations: { value: Translation; label: string }[] = isNivConfigured()
     ? [
         { value: "KJV", label: "King James Version" },
         { value: "NIV", label: "New International Version" },
@@ -43,6 +72,37 @@ export default function SettingsScreen() {
   ];
 
   const currentVoice = VOICE_OPTIONS.find((v) => v.id === preferences.defaultVoice) || VOICE_OPTIONS[4];
+
+  const handleSaveBackendUrl = () => {
+    preferences.setApiBaseUrlOverride(backendDraft);
+    setRuntimeApiBaseUrl(backendDraft || null);
+    setBackendMessage(
+      backendDraft.trim()
+        ? "Backend URL saved. Sign in again to use cloud sync."
+        : "Using local-only mode."
+    );
+    setShowBackendEditor(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleSync = async () => {
+    const ok = await syncWithCloud();
+    Haptics.notificationAsync(
+      ok
+        ? Haptics.NotificationFeedbackType.Success
+        : Haptics.NotificationFeedbackType.Error
+    );
+  };
+
+  const handleSignOut = async () => {
+    await authService.signOut();
+    clearUser();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "SignIn" }],
+    });
+  };
 
   const renderPickerModal = (
     visible: boolean,
@@ -73,6 +133,10 @@ export default function SettingsScreen() {
       </Pressable>
     );
   };
+
+  const StatusDot = ({ ok }: { ok: boolean }) => (
+    <View className={`w-2.5 h-2.5 rounded-full ${ok ? "bg-emerald-400" : "bg-amber-400"}`} />
+  );
 
   const SettingRow = ({
     icon,
@@ -136,7 +200,10 @@ export default function SettingsScreen() {
   );
 
   return (
-    <View className="flex-1 bg-neutral-950">
+    <KeyboardAvoidingView
+      className="flex-1 bg-neutral-950"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
       <View style={{ paddingTop: insets.top + 8 }} className="px-5 pb-4">
         <Text className="text-white text-3xl font-bold">Settings</Text>
       </View>
@@ -144,10 +211,135 @@ export default function SettingsScreen() {
       <ScrollView
         className="flex-1 px-5"
         contentContainerStyle={{ paddingBottom: 100 }}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Voice Settings */}
+        {/* Account */}
         <Text className="text-neutral-400 text-sm font-medium uppercase tracking-wider mb-2 mt-4">
+          Account
+        </Text>
+        <View className="bg-neutral-900 rounded-xl px-4">
+          {user ? (
+            <>
+              <View className="flex-row items-center py-4 border-b border-neutral-800">
+                <View className="w-10 h-10 rounded-lg bg-neutral-800 items-center justify-center mr-3">
+                  <Ionicons name="person" size={20} color="#6366f1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white text-base">{user.displayName || "Signed in"}</Text>
+                  <Text className="text-neutral-500 text-sm mt-0.5">{user.email}</Text>
+                </View>
+              </View>
+              <Pressable
+                onPress={handleSignOut}
+                className="flex-row items-center py-4 active:opacity-70"
+              >
+                <View className="w-10 h-10 rounded-lg bg-neutral-800 items-center justify-center mr-3">
+                  <Ionicons name="log-out-outline" size={20} color="#f87171" />
+                </View>
+                <Text className="flex-1 text-red-400 text-base">Sign Out</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable
+              onPress={() => navigation.navigate("SignIn")}
+              className="flex-row items-center py-4 active:opacity-70"
+            >
+              <View className="w-10 h-10 rounded-lg bg-neutral-800 items-center justify-center mr-3">
+                <Ionicons name="log-in-outline" size={20} color="#6366f1" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-white text-base">Sign In</Text>
+                <Text className="text-neutral-500 text-sm mt-0.5">
+                  Sync playlists when a backend is configured
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+            </Pressable>
+          )}
+        </View>
+
+        {/* Services */}
+        <Text className="text-neutral-400 text-sm font-medium uppercase tracking-wider mb-2 mt-6">
+          Services
+        </Text>
+        <View className="bg-neutral-900 rounded-xl px-4">
+          <View className="flex-row items-center py-4 border-b border-neutral-800">
+            <View className="w-10 h-10 rounded-lg bg-neutral-800 items-center justify-center mr-3">
+              <Ionicons name="mic" size={20} color="#6366f1" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-white text-base">AI Voice (OpenAI)</Text>
+              <Text className="text-neutral-500 text-sm mt-0.5">
+                {serviceStatus.openai
+                  ? "Ready for Listen Mode"
+                  : "Add EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY"}
+              </Text>
+            </View>
+            <StatusDot ok={serviceStatus.openai} />
+          </View>
+
+          <View className="flex-row items-center py-4 border-b border-neutral-800">
+            <View className="w-10 h-10 rounded-lg bg-neutral-800 items-center justify-center mr-3">
+              <Ionicons name="book" size={20} color="#6366f1" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-white text-base">NIV Translation</Text>
+              <Text className="text-neutral-500 text-sm mt-0.5">
+                {serviceStatus.niv
+                  ? "API.Bible key configured"
+                  : "Optional — add EXPO_PUBLIC_BIBLE_API_KEY"}
+              </Text>
+            </View>
+            <StatusDot ok={serviceStatus.niv} />
+          </View>
+
+          <SettingRow
+            icon="cloud-outline"
+            title="Cloud Backend"
+            value={serviceStatus.backend ? "On" : "Local"}
+            subtitle={
+              serviceStatus.apiBaseUrl ||
+              getEnvApiBaseUrl() ||
+              "Set a URL to enable cloud sync"
+            }
+            onPress={() => {
+              setBackendDraft(preferences.apiBaseUrlOverride || getEnvApiBaseUrl() || "");
+              setShowBackendEditor(true);
+            }}
+          />
+
+          <Pressable
+            onPress={handleSync}
+            disabled={syncStatus === "syncing"}
+            className="flex-row items-center py-4 active:opacity-70"
+          >
+            <View className="w-10 h-10 rounded-lg bg-neutral-800 items-center justify-center mr-3">
+              {syncStatus === "syncing" ? (
+                <ActivityIndicator size="small" color="#6366f1" />
+              ) : (
+                <Ionicons name="sync" size={20} color="#6366f1" />
+              )}
+            </View>
+            <View className="flex-1">
+              <Text className="text-white text-base">Sync Playlists</Text>
+              <Text className="text-neutral-500 text-sm mt-0.5">
+                {syncError
+                  ? syncError
+                  : lastSyncAt
+                    ? `Last synced ${new Date(lastSyncAt).toLocaleString()}`
+                    : "Push and pull playlists from the cloud"}
+              </Text>
+            </View>
+          </Pressable>
+        </View>
+
+        {backendMessage && (
+          <Text className="text-indigo-300 text-sm mt-3 px-1">{backendMessage}</Text>
+        )}
+
+        {/* Voice Settings */}
+        <Text className="text-neutral-400 text-sm font-medium uppercase tracking-wider mb-2 mt-6">
           AI Voice
         </Text>
         <View className="bg-neutral-900 rounded-xl px-4">
@@ -253,6 +445,7 @@ export default function SettingsScreen() {
           <Pressable
             onPress={() => {
               preferences.setHasCompletedOnboarding(false);
+              setUser(null);
               navigation.reset({
                 index: 0,
                 routes: [{ name: "Onboarding" }],
@@ -268,6 +461,46 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Backend URL editor */}
+      {renderPickerModal(
+        showBackendEditor,
+        () => setShowBackendEditor(false),
+        "Cloud Backend URL",
+        <View>
+          <Text className="text-neutral-400 text-sm mb-3">
+            Point this at your deployed Davar backend (for example https://api.yourdomain.com). Leave blank for local-only mode.
+          </Text>
+          <TextInput
+            value={backendDraft}
+            onChangeText={setBackendDraft}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            placeholder="https://your-backend.example.com"
+            placeholderTextColor="#6b7280"
+            className="bg-neutral-800 text-white rounded-xl px-4 py-3 mb-4"
+          />
+          <Pressable
+            onPress={handleSaveBackendUrl}
+            className="bg-indigo-500 rounded-xl py-3 items-center mb-2"
+          >
+            <Text className="text-white font-semibold">Save</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              setBackendDraft("");
+              preferences.setApiBaseUrlOverride("");
+              setRuntimeApiBaseUrl(null);
+              setShowBackendEditor(false);
+              setBackendMessage("Using local-only mode.");
+            }}
+            className="py-3 items-center"
+          >
+            <Text className="text-neutral-400">Clear / use local only</Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* Voice Picker */}
       {renderPickerModal(
@@ -375,6 +608,6 @@ export default function SettingsScreen() {
           </Pressable>
         ))
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }

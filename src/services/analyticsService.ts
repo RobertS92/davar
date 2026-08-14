@@ -2,13 +2,7 @@ import * as Device from "expo-device";
 import * as Application from "expo-application";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-
-// Check if backend is configured
-const isBackendConfigured = (): boolean => {
-  return !!API_BASE_URL && !API_BASE_URL.includes("your-backend");
-};
+import { getApiBaseUrl, isBackendConfigured } from "../api/config";
 
 export interface AnalyticsEvent {
   eventName: string;
@@ -116,7 +110,13 @@ class AnalyticsService {
     this.eventsQueue = [];
 
     try {
-      const response = await fetch(`${API_BASE_URL}/analytics/events`, {
+      const baseUrl = getApiBaseUrl();
+      if (!baseUrl) {
+        this.eventsQueue = [...events, ...this.eventsQueue].slice(0, 100);
+        return;
+      }
+
+      const response = await fetch(`${baseUrl}/analytics/events`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

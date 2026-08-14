@@ -209,8 +209,7 @@ export default function DeepDiveStudyScreen() {
       setStep("review");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err) {
-      setError("Failed to generate deep dive playlist. Please try again.");
-      console.log("Deep dive generation error:", err);
+      setError(err instanceof Error ? err.message : "Failed to generate deep dive playlist. Please try again.");
     } finally {
       setIsLoading(false);
     }

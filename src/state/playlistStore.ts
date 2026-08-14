@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Playlist } from "../types/bible";
+import { playlistSyncService } from "../services/playlistSyncService";
 
 interface PlaylistState {
   playlists: Playlist[];
@@ -9,12 +10,16 @@ interface PlaylistState {
   currentPlaylistId: string | null;
   currentItemIndex: number;
   isPlaying: boolean;
+  lastSyncAt: string | null;
+  syncStatus: "idle" | "syncing" | "error" | "success";
+  syncError: string | null;
 
   // Actions
   addPlaylist: (playlist: Playlist) => void;
   updatePlaylist: (id: string, updates: Partial<Playlist>) => void;
   deletePlaylist: (id: string) => void;
   toggleFavorite: (id: string) => void;
+  replacePlaylists: (playlists: Playlist[]) => void;
 
   // Playback state
   setCurrentPlaylist: (id: string | null) => void;
@@ -27,41 +32,63 @@ interface PlaylistState {
 
   // Recent playlists
   addToRecent: (id: string) => void;
+
+  // Cloud sync
+  syncWithCloud: () => Promise<boolean>;
+}
+
+function queueSync(playlist: Playlist) {
+  void playlistSyncService.syncPlaylist(playlist);
 }
 
 export const usePlaylistStore = create<PlaylistState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       playlists: [],
       recentPlaylistIds: [],
       currentPlaylistId: null,
       currentItemIndex: 0,
       isPlaying: false,
+      lastSyncAt: null,
+      syncStatus: "idle",
+      syncError: null,
 
-      addPlaylist: (playlist) =>
+      addPlaylist: (playlist) => {
         set((state) => ({
-          playlists: [playlist, ...state.playlists]
-        })),
+          playlists: [playlist, ...state.playlists],
+        }));
+        queueSync(playlist);
+      },
 
-      updatePlaylist: (id, updates) =>
+      updatePlaylist: (id, updates) => {
         set((state) => ({
           playlists: state.playlists.map((p) =>
             p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
           ),
-        })),
+        }));
+        const updated = get().playlists.find((p) => p.id === id);
+        if (updated) queueSync(updated);
+      },
 
-      deletePlaylist: (id) =>
+      deletePlaylist: (id) => {
         set((state) => ({
           playlists: state.playlists.filter((p) => p.id !== id),
           recentPlaylistIds: state.recentPlaylistIds.filter((rid) => rid !== id),
-        })),
+        }));
+        void playlistSyncService.deletePlaylist(id);
+      },
 
-      toggleFavorite: (id) =>
+      toggleFavorite: (id) => {
         set((state) => ({
           playlists: state.playlists.map((p) =>
-            p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
+            p.id === id ? { ...p, isFavorite: !p.isFavorite, updatedAt: new Date().toISOString() } : p
           ),
-        })),
+        }));
+        const updated = get().playlists.find((p) => p.id === id);
+        if (updated) queueSync(updated);
+      },
+
+      replacePlaylists: (playlists) => set({ playlists }),
 
       setCurrentPlaylist: (id) =>
         set({ currentPlaylistId: id, currentItemIndex: 0 }),
@@ -102,16 +129,41 @@ export const usePlaylistStore = create<PlaylistState>()(
             recentPlaylistIds: [id, ...filtered].slice(0, 10),
           };
         }),
+
+      syncWithCloud: async () => {
+        set({ syncStatus: "syncing", syncError: null });
+        const local = get().playlists;
+        const pushResult = await playlistSyncService.syncAll(local);
+
+        if (!pushResult.ok) {
+          set({ syncStatus: "error", syncError: pushResult.error });
+          return false;
+        }
+
+        const remote = await playlistSyncService.fetchRemotePlaylists();
+        const merged = playlistSyncService.mergePlaylists(get().playlists, remote);
+        set({
+          playlists: merged,
+          lastSyncAt: new Date().toISOString(),
+          syncStatus: "success",
+          syncError: null,
+        });
+        return true;
+      },
     }),
     {
       name: "scripture-playlists",
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        playlists: state.playlists,
+        recentPlaylistIds: state.recentPlaylistIds,
+        lastSyncAt: state.lastSyncAt,
+      }),
     }
   )
 );
 
 // Helper functions to derive data outside of components
-// These should be called with the raw data from selectors
 export function getPlaylistById(playlists: Playlist[], id: string): Playlist | undefined {
   return playlists.find((p) => p.id === id);
 }

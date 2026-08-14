@@ -445,6 +445,13 @@ app.get('/health', (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Scripture Backend running on port ${PORT}`);
+const HOST = process.env.HOST || "0.0.0.0";
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.includes("change-this")) {
+  console.error("JWT_SECRET is missing or insecure. Update backend/.env before deploying.");
+  process.exit(1);
+}
+
+app.listen(PORT, HOST, () => {
+  console.log(`Scripture Backend running on http://${HOST}:${PORT}`);
 });

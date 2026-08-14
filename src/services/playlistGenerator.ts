@@ -76,9 +76,11 @@ Suggest appropriate passages and return the JSON response.`;
 
     return parsed;
   } catch (error) {
-    console.log("AI generation error:", error);
+    if (error instanceof Error && error.message.includes("not configured")) {
+      throw error;
+    }
 
-    // Return a fallback playlist
+    // Return a fallback playlist for transient AI/parse failures
     return {
       title: "Scripture for Your Journey",
       references: [

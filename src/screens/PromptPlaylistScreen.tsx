@@ -143,8 +143,7 @@ export default function PromptPlaylistScreen() {
       setStep("review");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err) {
-      setError("Failed to generate playlist. Please try again.");
-      console.log("Generate error:", err);
+      setError(err instanceof Error ? err.message : "Failed to generate playlist. Please try again.");
     } finally {
       setIsLoading(false);
     }
