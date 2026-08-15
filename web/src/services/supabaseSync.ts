@@ -1,5 +1,6 @@
 import type { Playlist } from "@/types/bible";
-import { ensureSupabaseSession, getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { ensureSupabaseSession } from "@/lib/auth";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 type PlaylistRow = {
   id: string;

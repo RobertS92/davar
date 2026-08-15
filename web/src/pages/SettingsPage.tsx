@@ -1,26 +1,96 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import type { PauseStyle, PlaybackSpeed, Translation } from "@/types/bible";
 import { VOICE_OPTIONS } from "@/services/ttsService";
 import { usePreferencesStore } from "@/stores/preferencesStore";
+import { isSignedInUser, useAuthStore } from "@/stores/authStore";
+import { usePlaylistStore } from "@/stores/playlistStore";
 import { cn } from "@/lib/cn";
 import { isNivAvailable } from "@/lib/api";
+import { analytics } from "@/services/analyticsService";
+import { AppModal } from "@/components/AppModal";
 
 export default function SettingsPage() {
   const prefs = usePreferencesStore();
+  const user = useAuthStore((s) => s.user);
+  const signOut = useAuthStore((s) => s.signOut);
+  const syncStatus = usePlaylistStore((s) => s.syncStatus);
+  const hydrateFromSupabase = usePlaylistStore((s) => s.hydrateFromSupabase);
   const nivOk = isNivAvailable();
+  const [signingOut, setSigningOut] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   const speeds: PlaybackSpeed[] = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
   const lengths = [10, 15, 20, 30, 45, 60];
   const textSizes = [16, 18, 20, 22, 24, 28];
   const pauses: PauseStyle[] = ["short", "medium", "long"];
+  const signedIn = isSignedInUser(user);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      analytics.track("auth_sign_out");
+      await hydrateFromSupabase();
+      setMessage("Signed out. You can keep using Davar as a guest.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Could not sign out");
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   return (
     <div className="safe-top flex flex-1 flex-col pb-10">
       <header className="px-5 pb-4 pt-2">
         <p className="font-display text-3xl font-semibold">Settings</p>
-        <p className="mt-1 text-neutral-400">Preferences stay on this device</p>
+        <p className="mt-1 text-neutral-400">Account, sync, and playback preferences</p>
       </header>
 
       <div className="space-y-6 px-5 lg:max-w-2xl">
+        <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4">
+          <h2 className="mb-3 font-semibold text-white">Account</h2>
+          {signedIn ? (
+            <div className="space-y-3">
+              <p className="text-sm text-neutral-300">
+                Signed in as <span className="text-white">{user?.email}</span>
+              </p>
+              <p className="text-xs text-neutral-500">
+                Cloud sync: {syncStatus === "synced" ? "up to date" : syncStatus}
+              </p>
+              <button
+                onClick={() => void handleSignOut()}
+                disabled={signingOut}
+                className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-neutral-200 disabled:opacity-60"
+              >
+                {signingOut ? "Signing out…" : "Sign out"}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-neutral-300">
+                {user?.isAnonymous
+                  ? "Using a guest session. Sign in to sync playlists across devices."
+                  : "Sign in to sync playlists with Supabase."}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  to="/sign-in"
+                  className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  to="/sign-up"
+                  className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-neutral-200"
+                >
+                  Create account
+                </Link>
+              </div>
+            </div>
+          )}
+        </section>
+
         <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4">
           <h2 className="mb-3 font-semibold text-white">Defaults</h2>
           <div className="space-y-4">
@@ -92,9 +162,6 @@ export default function SettingsPage() {
                   </button>
                 ))}
               </div>
-              <p className="mt-2 text-xs text-neutral-500">
-                Uses OpenAI TTS when available, otherwise your device voice.
-              </p>
             </div>
 
             <div>
@@ -192,43 +259,13 @@ export default function SettingsPage() {
         <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4 text-sm text-neutral-400">
           <p className="font-semibold text-white">Backend</p>
           <p className="mt-2 leading-relaxed">
-            Front end hosts on Vercel. Playlists and analytics sync to Supabase (anonymous secure session — no
-            account UI). AI voices use Vercel API routes.
-          </p>
-          <p className="mt-3 text-xs">
-            Sync:{" "}
-            <span className="text-neutral-200">
-              {typeof window !== "undefined" && import.meta.env.VITE_SUPABASE_URL
-                ? "Supabase configured"
-                : "Local only (set VITE_SUPABASE_URL)"}
-            </span>
-          </p>
-        </section>
-
-        <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4 text-sm text-neutral-400">
-          <p className="font-semibold text-white">Backend</p>
-          <p className="mt-2 leading-relaxed">
-            Front end hosts on Vercel. Playlists and analytics sync to Supabase (anonymous secure session — no
-            account UI). AI voices use Vercel API routes.
-          </p>
-          <p className="mt-3 text-xs">
-            Sync:{" "}
-            <span className="text-neutral-200">
-              {import.meta.env.VITE_SUPABASE_URL
-                ? "Supabase configured"
-                : "Local only (set VITE_SUPABASE_URL)"}
-            </span>
-          </p>
-        </section>
-
-        <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4 text-sm text-neutral-400">
-          <p className="font-semibold text-white">About the web app</p>
-          <p className="mt-2 leading-relaxed">
-            Full-featured browser version of Davar. No accounts, pricing, or tiers — everything here is available
-            on this device. Add to Home Screen for an app-like experience without TestFlight.
+            Front end on Vercel. Accounts and playlist sync on Supabase. AI voices via Vercel API routes. No
+            pricing tiers.
           </p>
         </section>
       </div>
+
+      <AppModal open={!!message} title="Account" message={message || ""} onClose={() => setMessage(null)} />
     </div>
   );
 }

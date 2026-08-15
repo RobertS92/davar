@@ -4,13 +4,15 @@
 
 1. Go to [https://supabase.com](https://supabase.com) and create a project (e.g. `davar`)
 2. Open **SQL Editor** and run the migration in `supabase/migrations/20260815000000_init_davar.sql`
-3. Enable **Anonymous sign-ins**:
-   - Authentication → Providers → **Anonymous** → Enable
-4. Copy keys from **Project Settings → API**:
+3. Enable auth providers:
+   - **Email** (on by default) — used for Sign In / Sign Up
+   - **Anonymous** (Authentication → Providers → Anonymous → Enable) — used when users tap “Continue without an account”
+4. Optional: disable “Confirm email” under Authentication → Providers → Email if you want instant sign-up during development
+5. Copy keys from **Project Settings → API**:
    - Project URL
    - `anon` `public` key
 
-There is **no Sign In / Sign Up UI** on web. The app signs in anonymously so playlists can sync securely under Row Level Security. No pricing tiers.
+There are **no pricing tiers**. Users can sign in, sign up, or continue as a guest.
 
 ## 2. Environment variables
 
@@ -23,14 +25,13 @@ There is **no Sign In / Sign Up UI** on web. The app signs in anonymously so pla
 | `OPENAI_API_KEY` | Vercel (server only) | AI playlists + OpenAI TTS |
 | `VITE_BIBLE_API_KEY` | optional | NIV via api.bible |
 
-Locally, put the same values in `/workspace/.env` or `web/.env.local`.
+Locally, put the same values in `web/.env.local`.
 
 ## 3. Deploy front end on Vercel
 
 1. Import the GitHub repo in Vercel
 2. Set **Root Directory** to `web`
-3. Framework: Vite (auto)
-4. Add the env vars above
-5. Deploy
+3. Add the env vars above
+4. Deploy
 
-AI/TTS stay on Vercel serverless routes (`web/api/*`). Playlists + analytics use Supabase.
+AI/TTS stay on Vercel serverless routes (`web/api/*`). Accounts, playlists, and analytics use Supabase.

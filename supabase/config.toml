@@ -15,5 +15,5 @@ enabled = true
 [auth.email]
 enable_signup = false
 
-# Enable Anonymous sign-ins in the Supabase dashboard:
-# Authentication → Providers → Anonymous → Enable
+# Enable Email auth (default) and Anonymous sign-ins in the Supabase dashboard:
+# Authentication → Providers → Email / Anonymous

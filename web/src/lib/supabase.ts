@@ -16,26 +16,10 @@ export function getSupabase(): SupabaseClient | null {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: true,
         storageKey: "davar-supabase-auth",
       },
     });
   }
   return client;
-}
-
-/** Silent anonymous session — no Sign In UI. */
-export async function ensureSupabaseSession(): Promise<string | null> {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-
-  const { data: existing } = await supabase.auth.getSession();
-  if (existing.session?.user?.id) return existing.session.user.id;
-
-  const { data, error } = await supabase.auth.signInAnonymously();
-  if (error) {
-    console.warn("Supabase anonymous sign-in failed:", error.message);
-    return null;
-  }
-  return data.user?.id ?? null;
 }

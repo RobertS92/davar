@@ -1,4 +1,5 @@
-import { ensureSupabaseSession, getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { ensureSupabaseSession } from "@/lib/auth";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { apiUrl } from "@/lib/api";
 
 export interface AnalyticsEvent {

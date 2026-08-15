@@ -24,7 +24,7 @@ export default function OnboardingPage() {
 
   const complete = () => {
     setHasCompletedOnboarding(true);
-    navigate("/", { replace: true });
+    navigate("/sign-in", { replace: true });
   };
 
   const next = () => {

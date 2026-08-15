@@ -1,7 +1,11 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AppShell from "@/layouts/AppShell";
 import { usePreferencesStore } from "@/stores/preferencesStore";
+import { isSignedInUser, useAuthStore } from "@/stores/authStore";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import OnboardingPage from "@/pages/OnboardingPage";
+import SignInPage from "@/pages/SignInPage";
+import SignUpPage from "@/pages/SignUpPage";
 import HomePage from "@/pages/HomePage";
 import StationsPage from "@/pages/StationsPage";
 import LibraryPage from "@/pages/LibraryPage";
@@ -17,7 +21,25 @@ import ReadPage from "@/pages/ReadPage";
 
 function RequireOnboarding({ children }: { children: React.ReactNode }) {
   const done = usePreferencesStore((s) => s.hasCompletedOnboarding);
+  const user = useAuthStore((s) => s.user);
+  const hasSeenAuthPrompt = useAuthStore((s) => s.hasSeenAuthPrompt);
+  const initialized = useAuthStore((s) => s.initialized);
+
   if (!done) return <Navigate to="/onboarding" replace />;
+
+  if (isSupabaseConfigured()) {
+    if (!initialized) {
+      return (
+        <div className="flex min-h-dvh items-center justify-center bg-ink-950 text-neutral-400">
+          Loading…
+        </div>
+      );
+    }
+    if (!hasSeenAuthPrompt && !isSignedInUser(user)) {
+      return <Navigate to="/sign-in" replace />;
+    }
+  }
+
   return <>{children}</>;
 }
 
@@ -25,6 +47,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route path="/sign-in" element={<SignInPage />} />
+      <Route path="/sign-up" element={<SignUpPage />} />
       <Route
         element={
           <RequireOnboarding>

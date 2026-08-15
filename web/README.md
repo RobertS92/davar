@@ -10,7 +10,7 @@ Browser PWA for Scripture playlists — **no TestFlight**.
 | Data | **Supabase** (playlists, analytics) |
 | AI / TTS | Vercel serverless (`/api/ai`, `/api/tts`) |
 
-Native Expo app in the repo root is unchanged. No Sign In UI and no pricing tiers (anonymous Supabase session under the hood).
+Native Expo app in the repo root is unchanged. Users can sign in, sign up, or continue as a guest. No pricing tiers.
 
 ## Setup
 
