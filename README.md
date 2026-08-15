@@ -143,6 +143,20 @@ Using Zustand with AsyncStorage persistence:
   - To enable NIV: Add `EXPO_PUBLIC_BIBLE_API_KEY` to your environment variables
   - NIV option will automatically appear in settings when API key is configured
 
+## Web App (no TestFlight)
+
+A separate browser app lives in [`web/`](./web). It keeps the native Expo code untouched and gives you a mobile-app-like experience in Safari/Chrome, plus a desktop layout.
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+On iPhone: open the site in Safari → Share → **Add to Home Screen**.
+
+See [`web/README.md`](./web/README.md) for deploy and PWA details.
+
 ## Tech Stack
 
 - Expo SDK 53
@@ -153,3 +167,4 @@ Using Zustand with AsyncStorage persistence:
 - OpenAI TTS API for AI voice generation
 - expo-av for audio playback
 - react-native-pager-view for reading cards
+- Vite + React web app in `/web` (PWA)

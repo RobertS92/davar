@@ -7,6 +7,8 @@ node_modules/
 .expo/
 dist/
 web-build/
+web/dist/
+web/dev-dist/
 expo-env.d.ts
 
 # Native
@@ -39,3 +41,4 @@ android/
 
 # Expo log
 expo.log
+web/node_modules/
