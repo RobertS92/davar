@@ -5,10 +5,12 @@ import type { PlaylistTone } from "@/types/bible";
 import { AppModal } from "@/components/AppModal";
 import { parseReferences } from "@/services/bibleParser";
 import { compilePlaylist } from "@/services/playlistCompiler";
-import { generatePlaylistPlan, MODE_REFERENCES } from "@/services/playlistGenerator";
+import { generatePlaylistWithAI, MODE_REFERENCES } from "@/services/playlistGenerator";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
+import { analytics } from "@/services/analyticsService";
 import { cn } from "@/lib/cn";
+import { isNivAvailable } from "@/lib/api";
 
 const TONES: PlaylistTone[] = [
   "comfort",
@@ -58,15 +60,17 @@ export default function CreatePromptPage() {
       let explanation: string[] = [];
 
       if (!modePack) {
-        const plan = await generatePlaylistPlan({
+        const plan = await generatePlaylistWithAI({
           prompt,
           targetLength: defaultLength,
           tones,
+          translation: translation === "NIV" && !isNivAvailable() ? "KJV" : translation,
         });
         title = plan.title;
         referencesText = plan.references.join("\n");
         explanation = plan.explanation;
         setPlanPreview(plan.explanation);
+        analytics.track("ai_playlist_generated", { mode: mode || "prompt" });
       }
 
       const { references, errors } = parseReferences(referencesText);
@@ -78,7 +82,7 @@ export default function CreatePromptPage() {
       const playlist = await compilePlaylist({
         title,
         references,
-        translation: translation === "NIV" ? "KJV" : translation,
+        translation: translation === "NIV" && !isNivAvailable() ? "KJV" : translation,
         sourceType: "prompt",
         promptUsed: prompt,
         tags,

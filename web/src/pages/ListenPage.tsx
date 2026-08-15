@@ -1,19 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Pause,
-  Play,
-  SkipBack,
-  SkipForward,
-  X,
-} from "lucide-react";
+import { Moon, Pause, Play, SkipBack, SkipForward, X } from "lucide-react";
 import { AppModal } from "@/components/AppModal";
-import { formatClock } from "@/lib/cn";
+import { cn, formatClock } from "@/lib/cn";
 import {
-  isSpeechSupported,
   pauseSpeaking,
+  pauseStyleDelayMs,
   resumeSpeaking,
   speakText,
   stopSpeaking,
@@ -22,6 +14,10 @@ import {
 } from "@/services/ttsService";
 import { getPlaylistById, usePlaylistStore } from "@/stores/playlistStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
+import { analytics } from "@/services/analyticsService";
+import type { PauseStyle } from "@/types/bible";
+
+const SLEEP_OPTIONS = [5, 10, 15, 30, 45, 60];
 
 export default function ListenPage() {
   const { id = "" } = useParams();
@@ -34,40 +30,58 @@ export default function ListenPage() {
   const voice = usePreferencesStore((s) => s.defaultVoice) as TTSVoice;
   const speed = usePreferencesStore((s) => s.playbackSpeed);
   const announce = usePreferencesStore((s) => s.announceBookChapter);
+  const pauseStyle = usePreferencesStore((s) => s.pauseStyle) as PauseStyle;
 
   const playlist = getPlaylistById(playlists, id);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [engine, setEngine] = useState<"openai" | "speech" | null>(null);
+  const [showSleep, setShowSleep] = useState(false);
+  const [sleepMinutes, setSleepMinutes] = useState<number | null>(null);
+  const [sleepEndsAt, setSleepEndsAt] = useState<number | null>(null);
+
+  const playingRef = useRef(false);
+  const indexRef = useRef(0);
+  const sleepTimerRef = useRef<number | null>(null);
+  const pauseTimerRef = useRef<number | null>(null);
 
   const item = playlist?.items[index];
   const progress = useMemo(() => {
-    if (!item) return 0;
-    return Math.min(1, elapsed / Math.max(item.estimatedDuration, 1));
-  }, [elapsed, item]);
+    const total = duration || item?.estimatedDuration || 1;
+    return Math.min(1, elapsed / total);
+  }, [elapsed, duration, item]);
 
   useEffect(() => {
     warmUpVoices();
-    if (playlist) addToRecent(playlist.id);
-    return () => stopSpeaking();
+    if (playlist) {
+      addToRecent(playlist.id);
+      analytics.track("listen_opened", { playlistId: playlist.id });
+    }
+    return () => {
+      stopSpeaking();
+      if (sleepTimerRef.current) window.clearTimeout(sleepTimerRef.current);
+      if (pauseTimerRef.current) window.clearTimeout(pauseTimerRef.current);
+    };
   }, [playlist?.id]);
 
   useEffect(() => {
-    if (!playing || paused) return;
-    const timer = window.setInterval(() => setElapsed((e) => e + 0.25), 250);
-    return () => window.clearInterval(timer);
-  }, [playing, paused, index]);
+    indexRef.current = index;
+  }, [index]);
 
   useEffect(() => {
-    setElapsed(0);
-    setPaused(false);
-    if (playing && item) {
-      startItem();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index]);
+    playingRef.current = playing && !paused;
+  }, [playing, paused]);
+
+  useEffect(() => {
+    if (!playing || paused || engine === "openai") return;
+    const timer = window.setInterval(() => setElapsed((e) => e + 0.25), 250);
+    return () => window.clearInterval(timer);
+  }, [playing, paused, index, engine]);
 
   if (!playlist || !item) {
     return (
@@ -82,43 +96,67 @@ export default function ListenPage() {
     );
   }
 
-  const speakPayload = announce ? `${item.title}. ${item.text}` : item.text;
-
-  const startItem = () => {
-    if (!isSpeechSupported()) {
-      setError("Speech is not supported in this browser. Use Read Mode instead.");
-      setPlaying(false);
-      return;
-    }
-    speakText(
-      speakPayload,
-      { voice, speed },
-      {
-        onStart: () => {
-          setPlaying(true);
-          setPaused(false);
-        },
-        onEnd: () => {
-          if (index < playlist.items.length - 1) {
-            setIndex((i) => i + 1);
-          } else {
-            setPlaying(false);
-            markPlaylistCompleted(playlist.id);
-          }
-        },
-        onError: (message) => {
-          setPlaying(false);
-          setError(message);
-        },
+  const advanceAfterPause = (fromIndex: number) => {
+    if (pauseTimerRef.current) window.clearTimeout(pauseTimerRef.current);
+    pauseTimerRef.current = window.setTimeout(() => {
+      const next = fromIndex + 1;
+      if (next < playlist.items.length) {
+        setIndex(next);
+        void startItemAt(next);
+      } else {
+        setPlaying(false);
+        markPlaylistCompleted(playlist.id);
       }
-    );
-    updatePlaybackProgress(playlist.id, item.id, 0);
+    }, pauseStyleDelayMs(pauseStyle));
   };
 
-  const togglePlay = () => {
+  const startItemAt = async (itemIndex: number) => {
+    const nextItem = playlist.items[itemIndex];
+    if (!nextItem) return;
+    setLoading(true);
+    setElapsed(0);
+    setDuration(nextItem.estimatedDuration);
+    setPaused(false);
+    setError(null);
+
+    const text = announce ? `${nextItem.title}. ${nextItem.text}` : nextItem.text;
+
+    try {
+      const used = await speakText(
+        text,
+        { voice, speed, preferOpenAi: true },
+        {
+          onStart: () => {
+            setPlaying(true);
+            setPaused(false);
+            setLoading(false);
+          },
+          onTimeUpdate: (current, total) => {
+            setElapsed(current);
+            if (total) setDuration(total);
+          },
+          onEnd: () => {
+            updatePlaybackProgress(playlist.id, nextItem.id, 0);
+            advanceAfterPause(itemIndex);
+          },
+          onError: (message) => {
+            setLoading(false);
+            setPlaying(false);
+            setError(message);
+          },
+        }
+      );
+      setEngine(used);
+      updatePlaybackProgress(playlist.id, nextItem.id, 0);
+    } catch {
+      setLoading(false);
+      setPlaying(false);
+    }
+  };
+
+  const togglePlay = async () => {
     if (!playing) {
-      setElapsed(0);
-      startItem();
+      await startItemAt(index);
       return;
     }
     if (paused) {
@@ -132,15 +170,44 @@ export default function ListenPage() {
 
   const goPrev = () => {
     stopSpeaking();
+    if (pauseTimerRef.current) window.clearTimeout(pauseTimerRef.current);
     setPlaying(false);
     setIndex((i) => Math.max(0, i - 1));
   };
 
   const goNext = () => {
     stopSpeaking();
+    if (pauseTimerRef.current) window.clearTimeout(pauseTimerRef.current);
     setPlaying(false);
     setIndex((i) => Math.min(playlist.items.length - 1, i + 1));
   };
+
+  const startSleepTimer = (minutes: number) => {
+    if (sleepTimerRef.current) window.clearTimeout(sleepTimerRef.current);
+    setSleepMinutes(minutes);
+    setSleepEndsAt(Date.now() + minutes * 60_000);
+    sleepTimerRef.current = window.setTimeout(() => {
+      stopSpeaking();
+      setPlaying(false);
+      setPaused(false);
+      setSleepMinutes(null);
+      setSleepEndsAt(null);
+      analytics.track("sleep_timer_fired", { minutes });
+    }, minutes * 60_000);
+    setShowSleep(false);
+    analytics.track("sleep_timer_set", { minutes });
+  };
+
+  const cancelSleepTimer = () => {
+    if (sleepTimerRef.current) window.clearTimeout(sleepTimerRef.current);
+    setSleepMinutes(null);
+    setSleepEndsAt(null);
+    setShowSleep(false);
+  };
+
+  const remainingSleep = sleepEndsAt
+    ? Math.max(0, Math.ceil((sleepEndsAt - Date.now()) / 60_000))
+    : 0;
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-ink-950">
@@ -160,9 +227,18 @@ export default function ListenPage() {
           <p className="text-xs uppercase tracking-[0.16em] text-neutral-400">Listen</p>
           <p className="text-sm text-neutral-200">{playlist.title}</p>
         </div>
-        <Link to={`/read/${playlist.id}`} className="rounded-full bg-white/5 px-3 py-2 text-xs text-white">
-          Read
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSleep(true)}
+            className={cn("rounded-full p-2", sleepMinutes ? "bg-accent/20 text-accent-soft" : "bg-white/5 text-white")}
+            aria-label="Sleep timer"
+          >
+            <Moon className="h-5 w-5" />
+          </button>
+          <Link to={`/read/${playlist.id}`} className="rounded-full bg-white/5 px-3 py-2 text-xs text-white">
+            Read
+          </Link>
+        </div>
       </header>
 
       <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col px-5 pb-10 pt-8">
@@ -171,21 +247,21 @@ export default function ListenPage() {
             {index + 1} / {playlist.items.length}
           </p>
           <h1 className="mt-3 font-display text-3xl font-semibold text-white">{item.title}</h1>
-          <p className="mt-6 max-h-[42vh] overflow-y-auto text-lg leading-8 text-neutral-200">
+          <p className="mt-6 max-h-[40vh] overflow-y-auto text-lg leading-8 text-neutral-200">
             {item.text}
           </p>
+          {loading && (
+            <p className="mt-4 animate-pulse-soft text-sm text-accent-soft">Generating audio…</p>
+          )}
         </div>
 
         <div className="mt-8">
           <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-accent transition-[width]"
-              style={{ width: `${progress * 100}%` }}
-            />
+            <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${progress * 100}%` }} />
           </div>
           <div className="mb-6 flex justify-between text-xs text-neutral-500">
             <span>{formatClock(elapsed)}</span>
-            <span>{formatClock(item.estimatedDuration)}</span>
+            <span>{formatClock(duration || item.estimatedDuration)}</span>
           </div>
 
           <div className="flex items-center justify-center gap-6">
@@ -193,8 +269,9 @@ export default function ListenPage() {
               <SkipBack className="h-6 w-6" />
             </button>
             <button
-              onClick={togglePlay}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/30"
+              onClick={() => void togglePlay()}
+              disabled={loading}
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/30 disabled:opacity-60"
               aria-label={playing && !paused ? "Pause" : "Play"}
             >
               {playing && !paused ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
@@ -204,22 +281,45 @@ export default function ListenPage() {
             </button>
           </div>
 
-          <div className="mt-6 flex items-center justify-center gap-4 text-neutral-400">
-            <button
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              className="inline-flex items-center gap-1 text-sm"
-            >
-              <ChevronLeft className="h-4 w-4" /> Prev
-            </button>
-            <button
-              onClick={() => setIndex((i) => Math.min(playlist.items.length - 1, i + 1))}
-              className="inline-flex items-center gap-1 text-sm"
-            >
-              Next <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <p className="mt-5 text-center text-xs text-neutral-500">
+            {speed}x · {pauseStyle} pauses
+            {engine ? ` · ${engine === "openai" ? "OpenAI voice" : "Device voice"}` : ""}
+            {sleepMinutes ? ` · Sleep in ${remainingSleep}m` : ""}
+          </p>
         </div>
       </div>
+
+      {showSleep && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center">
+          <button className="absolute inset-0" aria-label="Dismiss" onClick={() => setShowSleep(false)} />
+          <div className="glass relative w-full max-w-md rounded-t-3xl p-5 shadow-sheet sm:rounded-3xl">
+            <h2 className="mb-4 font-display text-xl font-semibold">Sleep Timer</h2>
+            {sleepMinutes ? (
+              <div className="text-center">
+                <p className="text-neutral-300">Playback stops in about {remainingSleep} minutes.</p>
+                <button
+                  onClick={cancelSleepTimer}
+                  className="mt-4 rounded-xl border border-red-500/40 bg-red-500/15 px-4 py-2.5 text-sm font-semibold text-red-300"
+                >
+                  Cancel timer
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {SLEEP_OPTIONS.map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => startSleepTimer(m)}
+                    className="rounded-xl bg-white/5 py-3 text-sm font-medium text-white hover:bg-accent/20"
+                  >
+                    {m} min
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <AppModal open={!!error} title="Audio unavailable" message={error || ""} onClose={() => setError(null)} />
     </div>

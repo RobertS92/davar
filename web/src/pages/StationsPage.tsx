@@ -22,6 +22,7 @@ import { STATION_REFERENCES } from "@/services/playlistGenerator";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { cn } from "@/lib/cn";
+import { isNivAvailable } from "@/lib/api";
 
 const STATIONS = [
   { id: "messiah", title: "The Messiah", subtitle: "The life of Jesus Christ", icon: Sun, colors: "from-amber-400 to-orange-500" },
@@ -60,7 +61,7 @@ export default function StationsPage() {
       const playlist = await compilePlaylist({
         title: pack.title,
         references,
-        translation: translation === "NIV" ? "KJV" : translation,
+        translation: translation === "NIV" && !isNivAvailable() ? "KJV" : translation,
         sourceType: "prompt",
         promptUsed: `Station: ${pack.title}`,
         tags: pack.tags,

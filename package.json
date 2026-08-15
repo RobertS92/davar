@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "web:app": "npm --prefix web run dev",
     "web:build": "npm --prefix web run build",
+    "web:sync-bible": "bash scripts/sync-web-bible.sh",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit"
   },

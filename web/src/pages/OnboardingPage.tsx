@@ -4,10 +4,12 @@ import { BookOpen, ChevronRight, Headphones } from "lucide-react";
 import type { ConsumptionMode, PlaybackSpeed, Translation } from "@/types/bible";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { cn } from "@/lib/cn";
+import { isNivAvailable } from "@/lib/api";
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
+  const nivOk = isNivAvailable();
 
   const setDefaultTranslation = usePreferencesStore((s) => s.setDefaultTranslation);
   const setDefaultConsumptionMode = usePreferencesStore((s) => s.setDefaultConsumptionMode);
@@ -31,8 +33,12 @@ export default function OnboardingPage() {
   };
 
   const translations: { value: Translation; label: string; desc: string }[] = [
-    { value: "KJV", label: "King James Version", desc: "Classic, poetic language" },
-    { value: "NIV", label: "New International Version", desc: "Coming soon on web — KJV works offline" },
+    { value: "KJV", label: "King James Version", desc: "Classic, poetic language — works offline" },
+    {
+      value: "NIV",
+      label: "New International Version",
+      desc: nivOk ? "Modern, readable translation" : "Add a Bible API key to enable NIV",
+    },
   ];
 
   const modes: { value: ConsumptionMode; label: string; desc: string; icon: typeof Headphones }[] = [
@@ -59,9 +65,9 @@ export default function OnboardingPage() {
             </p>
             <div className="mt-8 space-y-3 rounded-2xl bg-ink-850/80 p-5">
               {[
-                "Create playlists with AI-style topic matching",
+                "AI-powered playlists and Deep Dive studies",
                 "Stations for faith, family, work, and more",
-                "Listen Mode and Read Mode on any device",
+                "OpenAI voices in Listen Mode, or Read Mode anywhere",
               ].map((item) => (
                 <p key={item} className="text-sm text-neutral-200">
                   · {item}
@@ -79,14 +85,14 @@ export default function OnboardingPage() {
               {translations.map((opt) => (
                 <button
                   key={opt.value}
-                  disabled={opt.value === "NIV"}
+                  disabled={opt.value === "NIV" && !nivOk}
                   onClick={() => setDefaultTranslation(opt.value)}
                   className={cn(
                     "w-full rounded-2xl border p-4 text-left transition",
                     defaultTranslation === opt.value
                       ? "border-accent bg-accent/15"
                       : "border-white/10 bg-ink-850/70",
-                    opt.value === "NIV" && "opacity-50"
+                    opt.value === "NIV" && !nivOk && "opacity-50"
                   )}
                 >
                   <p className="font-semibold text-white">{opt.label}</p>

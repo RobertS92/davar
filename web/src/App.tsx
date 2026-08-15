@@ -10,6 +10,8 @@ import SettingsPage from "@/pages/SettingsPage";
 import CreateManualPage from "@/pages/CreateManualPage";
 import CreatePromptPage from "@/pages/CreatePromptPage";
 import PlaylistDetailPage from "@/pages/PlaylistDetailPage";
+import EditPlaylistPage from "@/pages/EditPlaylistPage";
+import DeepDivePage from "@/pages/DeepDivePage";
 import ListenPage from "@/pages/ListenPage";
 import ReadPage from "@/pages/ReadPage";
 
@@ -35,9 +37,11 @@ export default function App() {
         <Route path="/library" element={<LibraryPage />} />
         <Route path="/modes" element={<ModesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/deep-dive" element={<DeepDivePage />} />
         <Route path="/create/manual" element={<CreateManualPage />} />
         <Route path="/create/prompt" element={<CreatePromptPage />} />
         <Route path="/playlist/:id" element={<PlaylistDetailPage />} />
+        <Route path="/playlist/:id/edit" element={<EditPlaylistPage />} />
         <Route path="/listen/:id" element={<ListenPage />} />
         <Route path="/read/:id" element={<ReadPage />} />
       </Route>

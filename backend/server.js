@@ -443,6 +443,123 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// ============ AI / TTS (web + native clients) ============
+
+function getOpenAIKey() {
+  return process.env.OPENAI_API_KEY || process.env.EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY;
+}
+
+app.get('/api/tts/health', (req, res) => {
+  res.status(getOpenAIKey() ? 200 : 503).json({ ok: !!getOpenAIKey() });
+});
+
+app.post('/api/ai', async (req, res) => {
+  try {
+    const key = getOpenAIKey();
+    if (!key) return res.status(503).json({ message: 'OpenAI key not configured' });
+
+    const { messages, temperature, maxTokens, model } = req.body;
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: model || 'gpt-4o',
+        messages,
+        temperature: temperature ?? 0.7,
+        max_tokens: maxTokens || 2048,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) return res.status(response.status).json(data);
+    res.json({ content: data.choices?.[0]?.message?.content || '' });
+  } catch (error) {
+    console.error('AI error:', error);
+    res.status(500).json({ message: 'AI request failed' });
+  }
+});
+
+app.post('/api/tts', async (req, res) => {
+  try {
+    const key = getOpenAIKey();
+    if (!key) return res.status(503).send('OpenAI key not configured');
+
+    const { text, voice, speed } = req.body;
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'tts-1',
+        voice: voice || 'nova',
+        input: text,
+        speed: speed || 1,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      return res.status(response.status).send(err);
+    }
+
+    const buf = Buffer.from(await response.arrayBuffer());
+    res.set('Content-Type', 'audio/mpeg');
+    res.send(buf);
+  } catch (error) {
+    console.error('TTS error:', error);
+    res.status(500).send('TTS failed');
+  }
+});
+
+// Alias analytics path used by web app
+app.post('/api/analytics/events', (req, res) => {
+  try {
+    const { events } = req.body;
+    const insert = db.prepare(`
+      INSERT INTO analytics_events (event_name, properties, timestamp, user_id, session_id, device_info)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertMany = db.transaction((events) => {
+      for (const event of events) {
+        insert.run(
+          event.eventName,
+          JSON.stringify(event.properties || {}),
+          event.timestamp,
+          event.userId || null,
+          event.sessionId || null,
+          JSON.stringify(event.deviceInfo || {})
+        );
+      }
+    });
+
+    insertMany(events || []);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Track events error:', error);
+    res.status(500).json({ message: 'Failed to track events' });
+  }
+});
+
+// Serve web PWA build when present (no auth / no paid tiers)
+const path = require('path');
+const fs = require('fs');
+const webDist = path.join(__dirname, '..', 'web', 'dist');
+if (fs.existsSync(webDist)) {
+  app.use(express.static(webDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/auth') || req.path.startsWith('/playlists') || req.path.startsWith('/analytics') || req.path.startsWith('/api') || req.path === '/health') {
+      return next();
+    }
+    res.sendFile(path.join(webDist, 'index.html'));
+  });
+}
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

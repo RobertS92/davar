@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { BookOpen, Car, Heart, Moon } from "lucide-react";
+import { BookOpen, Car, Heart, Moon, Sparkles } from "lucide-react";
 
 const modes = [
   {
@@ -9,7 +9,7 @@ const modes = [
     icon: Moon,
     colors: "from-indigo-500 to-indigo-700",
     description: "Calmer pacing with peaceful passages — perfect for drifting off.",
-    features: ["Softer voice pacing", "Restful passage selection", "Ideal with sleep routines"],
+    features: ["Softer voice pacing", "Restful passage selection", "Pairs with sleep timer"],
   },
   {
     id: "commute",
@@ -47,6 +47,23 @@ export default function ModesPage() {
         <p className="font-display text-3xl font-semibold">Modes</p>
         <p className="mt-1 text-neutral-400">Curated listening and reading moods</p>
       </header>
+
+      <div className="mb-5 px-5">
+        <Link
+          to="/deep-dive"
+          className="flex items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-800 p-5 text-white"
+        >
+          <div className="rounded-2xl bg-white/15 p-3">
+            <Sparkles className="h-7 w-7" />
+          </div>
+          <div>
+            <p className="font-display text-2xl font-semibold">Deep Dive Study</p>
+            <p className="text-sm text-white/85">
+              60–120 minute sessions across 13 topics — precepts, stories, chapters, and more.
+            </p>
+          </div>
+        </Link>
+      </div>
 
       <div className="space-y-4 px-5 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
         {modes.map((mode) => (

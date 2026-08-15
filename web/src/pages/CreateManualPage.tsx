@@ -6,6 +6,7 @@ import { parseReferences } from "@/services/bibleParser";
 import { compilePlaylist } from "@/services/playlistCompiler";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
+import { isNivAvailable } from "@/lib/api";
 
 export default function CreateManualPage() {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ export default function CreateManualPage() {
       const playlist = await compilePlaylist({
         title: title.trim() || "My Playlist",
         references,
-        translation: translation === "NIV" ? "KJV" : translation,
+        translation: translation === "NIV" && !isNivAvailable() ? "KJV" : translation,
         sourceType: "manual",
         tags: ["manual"],
       });

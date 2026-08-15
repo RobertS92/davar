@@ -1,14 +1,17 @@
-import type { PlaybackSpeed } from "@/types/bible";
+import type { PauseStyle, PlaybackSpeed, Translation } from "@/types/bible";
 import { VOICE_OPTIONS } from "@/services/ttsService";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { cn } from "@/lib/cn";
+import { isNivAvailable } from "@/lib/api";
 
 export default function SettingsPage() {
   const prefs = usePreferencesStore();
+  const nivOk = isNivAvailable();
 
   const speeds: PlaybackSpeed[] = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
   const lengths = [10, 15, 20, 30, 45, 60];
   const textSizes = [16, 18, 20, 22, 24, 28];
+  const pauses: PauseStyle[] = ["short", "medium", "long"];
 
   return (
     <div className="safe-top flex flex-1 flex-col pb-10">
@@ -21,6 +24,33 @@ export default function SettingsPage() {
         <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4">
           <h2 className="mb-3 font-semibold text-white">Defaults</h2>
           <div className="space-y-4">
+            <div>
+              <p className="mb-2 text-sm text-neutral-400">Translation</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(["KJV", "NIV"] as Translation[]).map((t) => (
+                  <button
+                    key={t}
+                    disabled={t === "NIV" && !nivOk}
+                    onClick={() => prefs.setDefaultTranslation(t)}
+                    className={cn(
+                      "rounded-xl px-3 py-2.5 text-sm font-medium",
+                      prefs.defaultTranslation === t
+                        ? "bg-accent text-white"
+                        : "bg-white/5 text-neutral-300",
+                      t === "NIV" && !nivOk && "opacity-40"
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              {!nivOk && (
+                <p className="mt-2 text-xs text-neutral-500">
+                  NIV needs `EXPO_PUBLIC_BIBLE_API_KEY` or `VITE_BIBLE_API_KEY` from api.bible. KJV works offline.
+                </p>
+              )}
+            </div>
+
             <div>
               <p className="mb-2 text-sm text-neutral-400">Consumption mode</p>
               <div className="grid grid-cols-2 gap-2">
@@ -42,7 +72,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <p className="mb-2 text-sm text-neutral-400">Voice</p>
+              <p className="mb-2 text-sm text-neutral-400">OpenAI voice</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {VOICE_OPTIONS.map((voice) => (
                   <button
@@ -59,6 +89,27 @@ export default function SettingsPage() {
                     <p className="text-xs text-neutral-400">
                       {voice.gender} · {voice.style}
                     </p>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-neutral-500">
+                Uses OpenAI TTS when available, otherwise your device voice.
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-2 text-sm text-neutral-400">Pause between passages</p>
+              <div className="grid grid-cols-3 gap-2">
+                {pauses.map((style) => (
+                  <button
+                    key={style}
+                    onClick={() => prefs.setPauseStyle(style)}
+                    className={cn(
+                      "rounded-xl py-2 text-sm font-medium capitalize",
+                      prefs.pauseStyle === style ? "bg-accent text-white" : "bg-white/5 text-neutral-300"
+                    )}
+                  >
+                    {style}
                   </button>
                 ))}
               </div>
@@ -141,8 +192,8 @@ export default function SettingsPage() {
         <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4 text-sm text-neutral-400">
           <p className="font-semibold text-white">About the web app</p>
           <p className="mt-2 leading-relaxed">
-            This is the browser version of Davar. Your React Native / Expo app code is unchanged.
-            Add this site to your Home Screen for a full-screen, app-like experience without TestFlight.
+            Full-featured browser version of Davar. No accounts, pricing, or tiers — everything here is available
+            on this device. Add to Home Screen for an app-like experience without TestFlight.
           </p>
         </section>
       </div>
@@ -165,12 +216,7 @@ function Toggle({
       className="flex w-full items-center justify-between rounded-xl bg-white/5 px-3 py-3"
     >
       <span className="text-sm text-neutral-200">{label}</span>
-      <span
-        className={cn(
-          "relative h-6 w-11 rounded-full transition",
-          value ? "bg-accent" : "bg-neutral-600"
-        )}
-      >
+      <span className={cn("relative h-6 w-11 rounded-full transition", value ? "bg-accent" : "bg-neutral-600")}>
         <span
           className={cn(
             "absolute top-0.5 h-5 w-5 rounded-full bg-white transition",
