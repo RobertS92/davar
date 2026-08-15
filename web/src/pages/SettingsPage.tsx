@@ -190,6 +190,38 @@ export default function SettingsPage() {
         </section>
 
         <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4 text-sm text-neutral-400">
+          <p className="font-semibold text-white">Backend</p>
+          <p className="mt-2 leading-relaxed">
+            Front end hosts on Vercel. Playlists and analytics sync to Supabase (anonymous secure session — no
+            account UI). AI voices use Vercel API routes.
+          </p>
+          <p className="mt-3 text-xs">
+            Sync:{" "}
+            <span className="text-neutral-200">
+              {typeof window !== "undefined" && import.meta.env.VITE_SUPABASE_URL
+                ? "Supabase configured"
+                : "Local only (set VITE_SUPABASE_URL)"}
+            </span>
+          </p>
+        </section>
+
+        <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4 text-sm text-neutral-400">
+          <p className="font-semibold text-white">Backend</p>
+          <p className="mt-2 leading-relaxed">
+            Front end hosts on Vercel. Playlists and analytics sync to Supabase (anonymous secure session — no
+            account UI). AI voices use Vercel API routes.
+          </p>
+          <p className="mt-3 text-xs">
+            Sync:{" "}
+            <span className="text-neutral-200">
+              {import.meta.env.VITE_SUPABASE_URL
+                ? "Supabase configured"
+                : "Local only (set VITE_SUPABASE_URL)"}
+            </span>
+          </p>
+        </section>
+
+        <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4 text-sm text-neutral-400">
           <p className="font-semibold text-white">About the web app</p>
           <p className="mt-2 leading-relaxed">
             Full-featured browser version of Davar. No accounts, pricing, or tiers — everything here is available

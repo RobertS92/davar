@@ -1,45 +1,57 @@
-# Davar Web Deploy
+# Deploy Davar Web (Vercel + Supabase)
 
-## Option A — Vercel (recommended for the PWA)
+Architecture:
 
-1. From the `web/` folder, connect the repo to Vercel (Root Directory: `web`)
-2. Set environment variables:
-   - `OPENAI_API_KEY` (or `EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY`) for AI playlists + OpenAI TTS
-   - `EXPO_PUBLIC_BIBLE_API_KEY` / `VITE_BIBLE_API_KEY` for NIV (optional)
-3. Deploy. Serverless routes under `web/api/*` handle AI/TTS.
+- **Front end:** Vite React PWA on **Vercel** (`web/`)
+- **Data backend:** **Supabase** (playlists + analytics)
+- **AI / TTS:** Vercel serverless routes (`web/api/ai`, `web/api/tts`) so OpenAI keys stay off the client
+
+No Sign In UI and no pricing tiers. The app uses Supabase **anonymous auth** under the hood so each browser gets a secure user id for Row Level Security.
+
+## 1. Supabase
+
+Follow [`supabase/README.md`](../supabase/README.md):
+
+1. Create project
+2. Run SQL migration `supabase/migrations/20260815000000_init_davar.sql`
+3. Enable **Anonymous** provider
+4. Copy Project URL + anon key
+
+## 2. Vercel
+
+1. Import this GitHub repo in [Vercel](https://vercel.com)
+2. Set **Root Directory** to `web`
+3. Add environment variables:
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `VITE_SUPABASE_URL` | yes | Supabase URL |
+| `VITE_SUPABASE_ANON_KEY` | yes | Supabase anon key |
+| `OPENAI_API_KEY` | yes for AI/TTS | Server-only |
+| `VITE_BIBLE_API_KEY` | no | Enables NIV |
+
+4. Deploy
 
 ```bash
 cd web
 npx vercel --prod
 ```
 
-## Option B — Backend hosts the built PWA
+## 3. Local development
 
 ```bash
-cd web && npm install && npm run build
-cd ../backend && npm install && npm start
-```
+cp web/.env.example web/.env.local
+# fill in Supabase + OpenAI values
 
-The Express server serves `web/dist` and exposes `/api/ai`, `/api/tts`, and analytics.
-
-## Option C — Netlify
-
-Root directory `web`, build `npm run build`, publish `dist`. Configure the same env vars.
-
-## Local development
-
-```bash
 cd web
 npm install
 npm run dev
 ```
 
-Vite middleware serves `/api/*` using keys from the repo `.env`.
+Vite still proxies `/api/ai` and `/api/tts` in dev via `vite.apiPlugin.ts` (reads repo `.env`).
 
-## Sync Bible data from native
+## 4. Verify
 
-```bash
-bash scripts/sync-web-bible.sh
-```
-
-No pricing or account tiers — the web app is fully available once deployed.
+- Create a playlist → appears in Supabase Table Editor → `playlists`
+- Refresh the site → playlist still there (hydrated from Supabase)
+- Listen Mode generates OpenAI audio when `OPENAI_API_KEY` is set

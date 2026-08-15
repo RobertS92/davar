@@ -145,7 +145,11 @@ Using Zustand with AsyncStorage persistence:
 
 ## Web App (no TestFlight)
 
-A separate browser app lives in [`web/`](./web). It keeps the native Expo code untouched and gives you a mobile-app-like experience in Safari/Chrome, plus a desktop layout.
+A separate browser app lives in [`web/`](./web).
+
+- **Host:** Vercel (`web/`)
+- **Backend:** Supabase (playlists + analytics) — see [`supabase/`](./supabase)
+- **AI/TTS:** Vercel serverless API routes
 
 ```bash
 cd web
@@ -153,9 +157,7 @@ npm install
 npm run dev
 ```
 
-On iPhone: open the site in Safari → Share → **Add to Home Screen**.
-
-See [`web/README.md`](./web/README.md) for deploy and PWA details.
+Setup: [`supabase/README.md`](./supabase/README.md) + [`web/DEPLOY.md`](./web/DEPLOY.md)
 
 ## Tech Stack
 

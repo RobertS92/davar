@@ -9,6 +9,8 @@ dist/
 web-build/
 web/dist/
 web/dev-dist/
+web/.env.local
+web/.env.*.local
 expo-env.d.ts
 
 # Native
