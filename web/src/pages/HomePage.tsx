@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Car, Heart, Moon, BookOpen, Sparkles, PenLine } from "lucide-react";
 import { InstallBanner } from "@/components/InstallBanner";
 import { PlaylistCard } from "@/components/PlaylistCard";
+import { Screen, ScreenHeader } from "@/components/Screen";
 import { getFavorites, getRecentPlaylists, usePlaylistStore } from "@/stores/playlistStore";
 
 const modes = [
@@ -18,15 +19,12 @@ export default function HomePage() {
   const favorites = getFavorites(playlists);
 
   return (
-    <div className="safe-top flex flex-1 flex-col pb-6">
-      <header className="px-5 pb-4 pt-2">
-        <p className="font-display text-3xl font-semibold text-white">Davar</p>
-        <p className="mt-1 text-neutral-400">Listen or read the Word</p>
-      </header>
+    <Screen>
+      <ScreenHeader title="Davar" subtitle="Listen or read the Word" />
 
       <InstallBanner />
 
-      <div className="space-y-8 px-5">
+      <div className="space-y-8 px-5 pb-4 pt-4">
         <section>
           <h2 className="mb-3 text-lg font-semibold text-white">Create Playlist</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -61,7 +59,7 @@ export default function HomePage() {
               <Link
                 key={mode.id}
                 to={`/create/prompt?mode=${mode.id}`}
-                className="flex flex-col items-center gap-2 rounded-2xl border border-white/5 bg-ink-850/80 px-2 py-4"
+                className="flex flex-col items-center gap-2 rounded-2xl border border-white/5 bg-ink-850/80 px-2 py-4 active:scale-[0.98]"
               >
                 <div
                   className="flex h-10 w-10 items-center justify-center rounded-xl"
@@ -112,6 +110,6 @@ export default function HomePage() {
           </section>
         )}
       </div>
-    </div>
+    </Screen>
   );
 }

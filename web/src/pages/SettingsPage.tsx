@@ -9,13 +9,14 @@ import { cn } from "@/lib/cn";
 import { isNivAvailable } from "@/lib/api";
 import { analytics } from "@/services/analyticsService";
 import { AppModal } from "@/components/AppModal";
+import { Screen, ScreenHeader } from "@/components/Screen";
 
 export default function SettingsPage() {
   const prefs = usePreferencesStore();
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
   const syncStatus = usePlaylistStore((s) => s.syncStatus);
-  const hydrateFromSupabase = usePlaylistStore((s) => s.hydrateFromSupabase);
+  const hydrateFromBackend = usePlaylistStore((s) => s.hydrateFromBackend);
   const nivOk = isNivAvailable();
   const [signingOut, setSigningOut] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -31,7 +32,8 @@ export default function SettingsPage() {
     try {
       await signOut();
       analytics.track("auth_sign_out");
-      await hydrateFromSupabase();
+      analytics.setUserId(null);
+      await hydrateFromBackend();
       setMessage("Signed out. You can keep using Davar as a guest.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Could not sign out");
@@ -41,13 +43,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="safe-top flex flex-1 flex-col pb-10">
-      <header className="px-5 pb-4 pt-2">
-        <p className="font-display text-3xl font-semibold">Settings</p>
-        <p className="mt-1 text-neutral-400">Account, sync, and playback preferences</p>
-      </header>
+    <Screen>
+      <ScreenHeader title="Settings" subtitle="Account, sync, and playback preferences" />
 
-      <div className="space-y-6 px-5 lg:max-w-2xl">
+      <div className="space-y-6 px-5 pb-4 pt-4 lg:max-w-2xl">
         <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4">
           <h2 className="mb-3 font-semibold text-white">Account</h2>
           {signedIn ? (
@@ -71,7 +70,7 @@ export default function SettingsPage() {
               <p className="text-sm text-neutral-300">
                 {user?.isAnonymous
                   ? "Using a guest session. Sign in to sync playlists across devices."
-                  : "Sign in to sync playlists with Supabase."}
+                  : "Sign in to sync playlists across devices."}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Link
@@ -259,14 +258,14 @@ export default function SettingsPage() {
         <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4 text-sm text-neutral-400">
           <p className="font-semibold text-white">Backend</p>
           <p className="mt-2 leading-relaxed">
-            Front end on Vercel. Accounts and playlist sync on Supabase. AI voices via Vercel API routes. No
-            pricing tiers.
+            Front end on Vercel. Accounts, playlist sync, analytics, and AI voices on Railway. No pricing
+            tiers.
           </p>
         </section>
       </div>
 
       <AppModal open={!!message} title="Account" message={message || ""} onClose={() => setMessage(null)} />
-    </div>
+    </Screen>
   );
 }
 

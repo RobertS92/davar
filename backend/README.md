@@ -1,188 +1,100 @@
-# Scripture App Backend
+# Davar Backend (Railway)
 
-Complete backend API for the Scripture Playlist mobile app with user authentication, cloud sync, and analytics.
+Express + SQLite API for auth, playlist sync, analytics, AI, and TTS.
 
 ## Features
 
-- ✅ User authentication (Sign up/Sign in/Sign out)
-- ✅ JWT token-based auth
-- ✅ Playlist cloud sync across devices
-- ✅ Analytics tracking
-- ✅ Admin dashboard
-- ✅ SQLite database (easy to deploy)
+- Email/password auth (JWT)
+- Playlist cloud sync
+- Analytics event ingest + admin summary
+- OpenAI chat + TTS proxies (`/api/ai`, `/api/tts`)
+- Optional static hosting of `web/dist` if present
 
-## Quick Start
-
-### 1. Install Dependencies
+## Quick Start (local)
 
 ```bash
 cd backend
+cp .env.example .env
 npm install
-```
-
-### 2. Configure Environment
-
-Edit `.env`:
-```
-PORT=3000
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-NODE_ENV=development
-```
-
-### 3. Start the Server
-
-```bash
-npm start
-```
-
-Or for development with auto-reload:
-```bash
 npm run dev
 ```
 
-The server will start on `http://localhost:3000`
+Server: `http://localhost:3000` · Health: `GET /health`
 
-### 4. Open Admin Dashboard
+## Environment
 
-Open `admin.html` in your browser to see real-time analytics.
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `JWT_SECRET` | yes (prod) | Sign access/refresh tokens |
+| `OPENAI_API_KEY` | for AI/TTS | Also accepts `EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY` |
+| `CORS_ORIGIN` | recommended | Comma-separated Vercel + local origins |
+| `DATABASE_PATH` | recommended | e.g. `/data/scripture.db` with a volume at `/data` |
+| `PORT` | auto | Railway injects this |
 
-## API Endpoints
+## Deploy on Railway
 
-### Authentication
-- `POST /auth/signup` - Create new user account
-- `POST /auth/signin` - Login user
-- `POST /auth/signout` - Logout user
-- `GET /auth/verify` - Verify auth token
+1. Create a project at [railway.app](https://railway.app)
+2. New service → deploy from this repo with **Root Directory** = `backend`
+3. Add a **Volume** mounted at `/data` (keeps SQLite across deploys)
+4. Set `JWT_SECRET`, `OPENAI_API_KEY`, `CORS_ORIGIN`, `DATABASE_PATH=/data/scripture.db`
+5. Deploy — copy the public HTTPS URL into the web app as `VITE_API_URL`
 
-### Playlists (requires auth)
-- `GET /playlists` - Get user's playlists
-- `POST /playlists/sync` - Sync a playlist to cloud
-- `DELETE /playlists/:id` - Delete a playlist
+Dockerfile + `railway.json` are included for reproducible builds (`better-sqlite3` native module).
 
-### Analytics
-- `POST /analytics/events` - Track events (batch)
-- `GET /analytics/summary` - Get analytics summary (for admin)
-
-### Health
-- `GET /health` - Health check
-
-## Database
-
-Uses SQLite (`scripture.db`) with these tables:
-- `users` - User accounts
-- `playlists` - User playlists
-- `analytics_events` - All tracked events
-- `sessions` - User sessions
-
-## Deployment Options
-
-### Option 1: Railway (Recommended - Free tier available)
-
-1. Create account at [railway.app](https://railway.app)
-2. Install Railway CLI:
-   ```bash
-   npm i -g @railway/cli
-   ```
-3. Deploy:
-   ```bash
-   cd backend
-   railway login
-   railway init
-   railway up
-   ```
-4. Add environment variables in Railway dashboard
-5. Get your app URL (e.g., `https://your-app.railway.app`)
-
-### Option 2: Render.com (Free tier)
-
-1. Create account at [render.com](https://render.com)
-2. Create new "Web Service"
-3. Connect your GitHub repo or upload code
-4. Set build command: `npm install`
-5. Set start command: `npm start`
-6. Add environment variables
-7. Deploy
-
-### Option 3: Heroku
+CLI alternative:
 
 ```bash
 cd backend
-heroku create scripture-app-backend
-heroku config:set JWT_SECRET=your-secret-key
-git push heroku main
+railway login
+railway init
+railway up
 ```
 
-### Option 4: VPS (DigitalOcean, AWS, etc.)
+## API
 
-1. SSH into your server
-2. Install Node.js
-3. Clone repo
-4. Run `npm install`
-5. Use PM2 to keep server running:
-   ```bash
-   npm install -g pm2
-   pm2 start server.js --name scripture-backend
-   pm2 save
-   pm2 startup
-   ```
+### Auth
+- `POST /auth/signup` `{ email, password, displayName? }`
+- `POST /auth/signin` `{ email, password }`
+- `POST /auth/signout` (Bearer)
+- `GET /auth/verify` (Bearer)
 
-## Connect Mobile App
+### Playlists (Bearer)
+- `GET /playlists`
+- `POST /playlists/sync` `{ playlist }`
+- `DELETE /playlists/:id`
 
-After deploying, update your mobile app's `.env`:
+### Analytics
+- `POST /analytics/events` / `POST /api/analytics/events`
+- `GET /analytics/summary`
+
+### AI / TTS
+- `POST /api/ai`
+- `POST /api/tts`
+- `GET /api/tts/health`
+
+### Health
+- `GET /health`
+
+## Connect clients
+
+Web (`web/.env.local` / Vercel):
 
 ```
-EXPO_PUBLIC_API_URL=https://your-backend-url.com
+VITE_API_URL=https://your-service.up.railway.app
 ```
 
-Example:
+Native Expo (repo root `.env`):
+
 ```
-EXPO_PUBLIC_API_URL=https://scripture-app.railway.app
-```
-
-## Security Notes
-
-- Change `JWT_SECRET` in production
-- Enable HTTPS in production
-- Add rate limiting for auth endpoints
-- Consider adding API key for analytics endpoint
-- Regular database backups
-
-## Monitoring
-
-The admin dashboard (`admin.html`) shows:
-- Total users
-- Active users (today/week/month)
-- Total playlists created
-- Average session duration
-- Most used features
-- Popular stations
-- Popular modes
-
-## Database Backup
-
-```bash
-# Backup
-cp scripture.db scripture_backup.db
-
-# Restore
-cp scripture_backup.db scripture.db
+EXPO_PUBLIC_API_URL=https://your-service.up.railway.app
 ```
 
-## Troubleshooting
+## Admin dashboard
 
-**Port already in use:**
-```bash
-# Change PORT in .env or:
-PORT=3001 npm start
-```
+Open `admin.html` locally (point it at your Railway URL) for usage summaries.
 
-**Database locked:**
-```bash
-# Stop all node processes
-pkill node
-# Restart server
-npm start
-```
+## Notes
 
-**CORS errors:**
-The server allows all origins in development. For production, update CORS settings in `server.js`.
+- Change `JWT_SECRET` before production traffic
+- Prefer a Railway volume for `DATABASE_PATH` so user data survives redeploys
+- No pricing tiers — free guest use + optional signed-in sync

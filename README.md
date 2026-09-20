@@ -148,8 +148,7 @@ Using Zustand with AsyncStorage persistence:
 A separate browser app lives in [`web/`](./web).
 
 - **Host:** Vercel (`web/`)
-- **Backend:** Supabase (playlists + analytics) — see [`supabase/`](./supabase)
-- **AI/TTS:** Vercel serverless API routes
+- **Backend:** Railway Express (`backend/`) — auth, playlists, analytics, AI/TTS
 
 ```bash
 cd web
@@ -157,7 +156,7 @@ npm install
 npm run dev
 ```
 
-Setup: [`supabase/README.md`](./supabase/README.md) + [`web/DEPLOY.md`](./web/DEPLOY.md)
+Setup: [`backend/README.md`](./backend/README.md) + [`web/DEPLOY.md`](./web/DEPLOY.md)
 
 ## Tech Stack
 

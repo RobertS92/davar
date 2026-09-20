@@ -1,42 +1,95 @@
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
-import { useAuthStore } from "@/stores/authStore";
+import {
+  apiFetch,
+  clearTokens,
+  getAccessToken,
+  isBackendConfigured,
+  postJson,
+  storeTokens,
+} from "@/lib/api";
+import { useAuthStore, type AuthUser } from "@/stores/authStore";
 
-/** Ensure there is a Supabase session (signed-in or anonymous guest). */
-export async function ensureSupabaseSession(): Promise<string | null> {
-  const supabase = getSupabase();
-  if (!supabase) return null;
+type AuthResponse = {
+  user: {
+    id: string;
+    email: string;
+    displayName?: string | null;
+    createdAt: string;
+    lastLoginAt: string;
+  };
+  tokens: { accessToken: string; refreshToken: string };
+};
 
-  const { data: existing } = await supabase.auth.getSession();
-  if (existing.session?.user) {
-    useAuthStore.getState().setUserFromSession(existing.session.user);
-    return existing.session.user.id;
-  }
-
-  // Guest path for users who skipped auth (requires Anonymous provider)
-  const { data, error } = await supabase.auth.signInAnonymously();
-  if (error) {
-    console.warn("Supabase guest session failed:", error.message);
-    useAuthStore.getState().setUserFromSession(null);
-    return null;
-  }
-  useAuthStore.getState().setUserFromSession(data.user);
-  return data.user?.id ?? null;
-}
-
-export async function initAuthListener(): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase || !isSupabaseConfigured()) {
-    useAuthStore.getState().setInitialized(true);
+export async function initAuth(): Promise<void> {
+  const store = useAuthStore.getState();
+  if (!isBackendConfigured()) {
+    store.setInitialized(true);
     return;
   }
 
-  const { data } = await supabase.auth.getSession();
-  useAuthStore.getState().setUserFromSession(data.session?.user ?? null);
-  useAuthStore.getState().setInitialized(true);
+  const token = getAccessToken();
+  if (!token) {
+    store.setUser(null);
+    store.setInitialized(true);
+    return;
+  }
 
-  supabase.auth.onAuthStateChange((_event, session) => {
-    useAuthStore.getState().setUserFromSession(session?.user ?? null);
-  });
+  try {
+    const data = await apiFetch<{ user: AuthResponse["user"] }>("/auth/verify", { auth: true });
+    store.setUser(mapUser(data.user));
+  } catch {
+    clearTokens();
+    store.setUser(null);
+  } finally {
+    store.setInitialized(true);
+  }
 }
 
-export { isSupabaseConfigured, getSupabase };
+export async function signInWithPassword(email: string, password: string): Promise<AuthUser> {
+  if (!isBackendConfigured()) {
+    throw new Error("Backend is not configured. Set VITE_API_URL to your Railway URL.");
+  }
+  const data = await postJson<AuthResponse>("/auth/signin", {
+    email: email.trim(),
+    password,
+  });
+  storeTokens(data.tokens);
+  return mapUser(data.user);
+}
+
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+  displayName?: string
+): Promise<AuthUser> {
+  if (!isBackendConfigured()) {
+    throw new Error("Backend is not configured. Set VITE_API_URL to your Railway URL.");
+  }
+  const data = await postJson<AuthResponse>("/auth/signup", {
+    email: email.trim(),
+    password,
+    displayName,
+  });
+  storeTokens(data.tokens);
+  return mapUser(data.user);
+}
+
+export async function signOutRemote(): Promise<void> {
+  try {
+    if (getAccessToken() && isBackendConfigured()) {
+      await apiFetch("/auth/signout", { method: "POST", auth: true });
+    }
+  } catch {
+    // ignore network errors on sign-out
+  } finally {
+    clearTokens();
+  }
+}
+
+function mapUser(user: AuthResponse["user"]): AuthUser {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName || null,
+    isAnonymous: false,
+  };
+}

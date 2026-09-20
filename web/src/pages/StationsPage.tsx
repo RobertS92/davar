@@ -16,6 +16,7 @@ import {
   Flower2,
 } from "lucide-react";
 import { AppModal } from "@/components/AppModal";
+import { Screen, ScreenHeader } from "@/components/Screen";
 import { compilePlaylist } from "@/services/playlistCompiler";
 import { parseReferences } from "@/services/bibleParser";
 import { STATION_REFERENCES } from "@/services/playlistGenerator";
@@ -78,13 +79,10 @@ export default function StationsPage() {
   };
 
   return (
-    <div className="safe-top flex flex-1 flex-col pb-6">
-      <header className="px-5 pb-4 pt-2">
-        <p className="font-display text-3xl font-semibold">Stations</p>
-        <p className="mt-1 text-neutral-400">Tap a topic for an instant playlist</p>
-      </header>
+    <Screen>
+      <ScreenHeader title="Stations" subtitle="Tap a topic for an instant playlist" />
 
-      <div className="grid gap-3 px-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 px-5 pb-4 pt-4 sm:grid-cols-2 lg:grid-cols-3">
         {STATIONS.map((station) => (
           <button
             key={station.id}
@@ -114,6 +112,6 @@ export default function StationsPage() {
         message={error || ""}
         onClose={() => setError(null)}
       />
-    </div>
+    </Screen>
   );
 }

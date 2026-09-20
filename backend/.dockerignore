@@ -1,0 +1,6 @@
+node_modules
+npm-debug.log
+scripture.db
+scripture_backup.db
+.env
+*.db

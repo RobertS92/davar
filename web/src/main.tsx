@@ -3,8 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { analytics } from "@/services/analyticsService";
-import { ensureSupabaseSession, initAuthListener } from "@/lib/auth";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { useAuthStore } from "@/stores/authStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import "./index.css";
 
@@ -12,11 +11,9 @@ function Root() {
   useEffect(() => {
     analytics.initialize();
     void (async () => {
-      await initAuthListener();
-      if (isSupabaseConfigured()) {
-        await ensureSupabaseSession();
-        await usePlaylistStore.getState().hydrateFromSupabase();
-      }
+      await useAuthStore.getState().initialize();
+      await usePlaylistStore.getState().hydrateFromBackend();
+      analytics.setUserId(useAuthStore.getState().user?.id ?? null);
     })();
   }, []);
 

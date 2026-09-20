@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { PlaylistCard } from "@/components/PlaylistCard";
+import { Screen, ScreenHeader } from "@/components/Screen";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { cn } from "@/lib/cn";
 
@@ -32,13 +33,13 @@ export default function LibraryPage() {
   }, [playlists, recentIds, query, filter]);
 
   return (
-    <div className="safe-top flex flex-1 flex-col pb-6">
-      <header className="px-5 pb-4 pt-2">
-        <p className="font-display text-3xl font-semibold">Library</p>
-        <p className="mt-1 text-neutral-400">{playlists.length} playlists saved on this device</p>
-      </header>
+    <Screen>
+      <ScreenHeader
+        title="Library"
+        subtitle={`${playlists.length} playlists saved on this device`}
+      />
 
-      <div className="px-5">
+      <div className="px-5 pb-4 pt-4">
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
           <input
@@ -76,6 +77,6 @@ export default function LibraryPage() {
           </div>
         )}
       </div>
-    </div>
+    </Screen>
   );
 }

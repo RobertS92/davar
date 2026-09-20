@@ -3,8 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
-import { ensureSupabaseSession } from "@/lib/auth";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isBackendConfigured } from "@/lib/api";
 import { analytics } from "@/services/analyticsService";
 import { AppModal } from "@/components/AppModal";
 
@@ -19,11 +18,10 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
 
   const finish = async () => {
-    await ensureSupabaseSession();
-    await usePlaylistStore.getState().hydrateFromSupabase();
+    analytics.setUserId(useAuthStore.getState().user?.id ?? null);
+    await usePlaylistStore.getState().hydrateFromBackend();
     navigate("/", { replace: true });
   };
 
@@ -37,8 +35,8 @@ export default function SignUpPage() {
       setError("Password must be at least 6 characters.");
       return;
     }
-    if (!isSupabaseConfigured()) {
-      setError("Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+    if (!isBackendConfigured()) {
+      setError("Backend is not configured. Add VITE_API_URL pointing to your Railway service.");
       return;
     }
     setLoading(true);
@@ -48,13 +46,7 @@ export default function SignUpPage() {
       analytics.track("auth_sign_up");
       await finish();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Sign up failed";
-      if (message.toLowerCase().includes("confirm")) {
-        setInfo(message);
-        setTimeout(() => navigate("/sign-in", { replace: true }), 1800);
-      } else {
-        setError(message);
-      }
+      setError(err instanceof Error ? err.message : "Sign up failed");
     } finally {
       setLoading(false);
     }
@@ -76,7 +68,7 @@ export default function SignUpPage() {
             <BookOpen className="h-8 w-8 text-white" />
           </div>
           <h1 className="font-display text-3xl font-semibold text-white">Create account</h1>
-          <p className="mt-2 text-neutral-300">Save and sync playlists with Supabase</p>
+          <p className="mt-2 text-neutral-300">Save and sync playlists across your devices</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
@@ -149,7 +141,6 @@ export default function SignUpPage() {
       </div>
 
       <AppModal open={!!error} title="Sign up" message={error || ""} onClose={() => setError(null)} />
-      <AppModal open={!!info} title="Check your email" message={info || ""} onClose={() => setInfo(null)} />
     </div>
   );
 }

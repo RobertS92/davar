@@ -2,12 +2,12 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Playlist } from "@/types/bible";
 import {
-  deletePlaylistFromSupabase,
-  fetchPlaylistsFromSupabase,
+  deletePlaylistFromBackend,
+  fetchPlaylistsFromBackend,
   mergePlaylists,
-  syncPlaylistToSupabase,
-} from "@/services/supabaseSync";
-import { isSupabaseConfigured } from "@/lib/supabase";
+  syncPlaylistToBackend,
+} from "@/services/playlistSync";
+import { getAccessToken, isBackendConfigured } from "@/lib/api";
 
 interface PlaylistState {
   playlists: Playlist[];
@@ -26,13 +26,17 @@ interface PlaylistState {
   updatePlaybackProgress: (playlistId: string, itemId: string, position: number) => void;
   markPlaylistCompleted: (id: string) => void;
   addToRecent: (id: string) => void;
-  hydrateFromSupabase: () => Promise<void>;
+  hydrateFromBackend: () => Promise<void>;
   setSyncStatus: (status: PlaylistState["syncStatus"]) => void;
 }
 
+function canSync(): boolean {
+  return isBackendConfigured() && !!getAccessToken();
+}
+
 function queueSync(playlist: Playlist) {
-  if (!isSupabaseConfigured()) return;
-  void syncPlaylistToSupabase(playlist);
+  if (!canSync()) return;
+  void syncPlaylistToBackend(playlist);
 }
 
 export const usePlaylistStore = create<PlaylistState>()(
@@ -67,7 +71,7 @@ export const usePlaylistStore = create<PlaylistState>()(
           playlists: state.playlists.filter((p) => p.id !== id),
           recentPlaylistIds: state.recentPlaylistIds.filter((rid) => rid !== id),
         }));
-        if (isSupabaseConfigured()) void deletePlaylistFromSupabase(id);
+        if (canSync()) void deletePlaylistFromBackend(id);
       },
 
       toggleFavorite: (id) => {
@@ -117,20 +121,19 @@ export const usePlaylistStore = create<PlaylistState>()(
           return { recentPlaylistIds: [id, ...filtered].slice(0, 10) };
         }),
 
-      hydrateFromSupabase: async () => {
-        if (!isSupabaseConfigured()) {
-          set({ syncStatus: "offline" });
+      hydrateFromBackend: async () => {
+        if (!canSync()) {
+          set({ syncStatus: isBackendConfigured() ? "idle" : "offline" });
           return;
         }
         set({ syncStatus: "syncing" });
         try {
-          const remote = await fetchPlaylistsFromSupabase();
+          const remote = await fetchPlaylistsFromBackend();
           const merged = mergePlaylists(get().playlists, remote);
           set({ playlists: merged, syncStatus: "synced" });
-          // Push any local-only rows up
           for (const playlist of merged) {
             const onRemote = remote.some((r) => r.id === playlist.id);
-            if (!onRemote) await syncPlaylistToSupabase(playlist);
+            if (!onRemote) await syncPlaylistToBackend(playlist);
           }
         } catch {
           set({ syncStatus: "offline" });

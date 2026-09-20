@@ -1,6 +1,5 @@
-import { ensureSupabaseSession } from "@/lib/auth";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { apiUrl } from "@/lib/api";
+import { useAuthStore } from "@/stores/authStore";
 
 export interface AnalyticsEvent {
   eventName: string;
@@ -33,18 +32,18 @@ class AnalyticsService {
     return `web_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   }
 
+  setUserId(userId: string | null) {
+    this.userId = userId;
+  }
+
   initialize() {
+    this.userId = useAuthStore.getState().user?.id ?? null;
     this.track("app_opened", { surface: "web" });
     this.flushTimer = window.setInterval(() => void this.flush(), 30000);
     window.addEventListener("beforeunload", () => {
       this.track("app_closed", { surface: "web" });
       void this.flush(true);
     });
-    if (isSupabaseConfigured()) {
-      void ensureSupabaseSession().then((id) => {
-        this.userId = id;
-      });
-    }
   }
 
   track(eventName: string, properties?: Record<string, unknown>) {
@@ -81,27 +80,6 @@ class AnalyticsService {
     const events = [...this.queue];
     this.queue = [];
 
-    if (isSupabaseConfigured()) {
-      const supabase = getSupabase();
-      if (supabase) {
-        if (!this.userId) this.userId = await ensureSupabaseSession();
-        const rows = events.map((e) => ({
-          event_name: e.eventName,
-          properties: e.properties || {},
-          timestamp: e.timestamp,
-          user_id: this.userId,
-          session_id: e.sessionId,
-          device_info: e.deviceInfo || {},
-        }));
-        const { error } = await supabase.from("analytics_events").insert(rows);
-        if (error) {
-          this.queue.unshift(...events);
-        }
-        return;
-      }
-    }
-
-    // Fallback: Vercel/API route
     const payload = JSON.stringify({ events });
     const url = apiUrl("/api/analytics/events");
     try {

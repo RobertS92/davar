@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { BookOpen, Car, Heart, Moon, Sparkles } from "lucide-react";
+import { Screen, ScreenHeader } from "@/components/Screen";
 
 const modes = [
   {
@@ -42,16 +43,13 @@ const modes = [
 
 export default function ModesPage() {
   return (
-    <div className="safe-top flex flex-1 flex-col pb-6">
-      <header className="px-5 pb-4 pt-2">
-        <p className="font-display text-3xl font-semibold">Modes</p>
-        <p className="mt-1 text-neutral-400">Curated listening and reading moods</p>
-      </header>
+    <Screen>
+      <ScreenHeader title="Modes" subtitle="Curated listening and reading moods" />
 
-      <div className="mb-5 px-5">
+      <div className="mb-5 px-5 pt-4">
         <Link
           to="/deep-dive"
-          className="flex items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-800 p-5 text-white"
+          className="flex items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-800 p-5 text-white active:scale-[0.99]"
         >
           <div className="rounded-2xl bg-white/15 p-3">
             <Sparkles className="h-7 w-7" />
@@ -65,12 +63,12 @@ export default function ModesPage() {
         </Link>
       </div>
 
-      <div className="space-y-4 px-5 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+      <div className="space-y-4 px-5 pb-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
         {modes.map((mode) => (
           <Link
             key={mode.id}
             to={`/create/prompt?mode=${mode.id}`}
-            className={`block overflow-hidden rounded-3xl bg-gradient-to-br p-5 text-white ${mode.colors}`}
+            className={`block overflow-hidden rounded-3xl bg-gradient-to-br p-5 text-white active:scale-[0.99] ${mode.colors}`}
           >
             <mode.icon className="h-8 w-8" />
             <h2 className="mt-4 font-display text-2xl font-semibold">{mode.title}</h2>
@@ -84,6 +82,6 @@ export default function ModesPage() {
           </Link>
         ))}
       </div>
-    </div>
+    </Screen>
   );
 }

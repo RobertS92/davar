@@ -1,24 +1,31 @@
-# Deploy Davar Web (Vercel + Supabase)
+# Deploy Davar Web (Vercel + Railway)
 
 Architecture:
 
 - **Front end:** Vite React PWA on **Vercel** (`web/`)
-- **Data + Auth backend:** **Supabase** (email auth, playlists, analytics)
-- **AI / TTS:** Vercel serverless routes (`web/api/ai`, `web/api/tts`) so OpenAI keys stay off the client
+- **Backend:** Express + SQLite on **Railway** (`backend/`) — auth, playlists, analytics, AI, TTS
 
-Users can **Sign in**, **Sign up**, or **Continue without an account** (anonymous guest). No pricing tiers.
+Users can **Sign in**, **Sign up**, or **Continue without an account**. No pricing tiers.
 
-## 1. Supabase
+## 1. Railway (backend)
 
-Follow [`supabase/README.md`](../supabase/README.md):
+1. Create a project at [railway.app](https://railway.app)
+2. Deploy the `backend/` folder (GitHub root directory = `backend`, or Railway CLI from that folder)
+3. Set environment variables:
 
-1. Create project
-2. Run SQL migration `supabase/migrations/20260815000000_init_davar.sql`
-3. Enable **Email** auth (default) and **Anonymous** provider (for guest mode)
-4. Optional: turn off email confirmation for faster local testing
-5. Copy Project URL + anon key
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `JWT_SECRET` | yes | Long random string |
+| `OPENAI_API_KEY` | yes for AI/TTS | Server-only |
+| `CORS_ORIGIN` | recommended | Your Vercel URL, e.g. `https://davar.vercel.app` |
+| `DATABASE_PATH` | recommended | e.g. `/data/scripture.db` with a Railway volume mounted at `/data` |
+| `PORT` | auto | Railway sets this |
 
-## 2. Vercel
+4. Copy the public HTTPS URL (e.g. `https://your-service.up.railway.app`)
+
+See also [`../backend/README.md`](../backend/README.md).
+
+## 2. Vercel (front end)
 
 1. Import this GitHub repo in [Vercel](https://vercel.com)
 2. Set **Root Directory** to `web`
@@ -26,10 +33,8 @@ Follow [`supabase/README.md`](../supabase/README.md):
 
 | Variable | Required | Notes |
 |----------|----------|-------|
-| `VITE_SUPABASE_URL` | yes | Supabase URL |
-| `VITE_SUPABASE_ANON_KEY` | yes | Supabase anon key |
-| `OPENAI_API_KEY` | yes for AI/TTS | Server-only |
-| `VITE_BIBLE_API_KEY` | no | Enables NIV |
+| `VITE_API_URL` | yes | Railway public URL (no trailing slash) |
+| `VITE_BIBLE_API_KEY` | no | Enables NIV from api.bible |
 
 4. Deploy
 
@@ -38,22 +43,29 @@ cd web
 npx vercel --prod
 ```
 
+Optional: keep `web/api/*` as same-origin fallbacks; the app prefers `VITE_API_URL` for all API calls.
+
 ## 3. Local development
 
 ```bash
-cp web/.env.example web/.env.local
-# fill in Supabase + OpenAI values
+# Terminal 1 — Railway-compatible API
+cd backend
+cp .env.example .env   # or edit existing .env
+npm install
+npm run dev
 
+# Terminal 2 — Vite PWA
+cp web/.env.example web/.env.local
+# set VITE_API_URL=http://localhost:3000
 cd web
 npm install
 npm run dev
 ```
 
-Vite still proxies `/api/ai` and `/api/tts` in dev via `vite.apiPlugin.ts` (reads repo `.env`).
-
 ## 4. Verify
 
-- Sign up / sign in works
-- Create a playlist → appears in Supabase `playlists` for that user
-- Guest skip still works when Anonymous provider is enabled
-- Listen Mode generates OpenAI audio when `OPENAI_API_KEY` is set
+- `GET {RAILWAY_URL}/health` returns `{ "status": "ok" }`
+- Sign up / sign in works from the web app
+- Create a playlist while signed in → appears after refresh on another device
+- Guest skip still works (local-only playlists)
+- Listen Mode generates OpenAI audio when `OPENAI_API_KEY` is set on Railway

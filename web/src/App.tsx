@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AppShell from "@/layouts/AppShell";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { isSignedInUser, useAuthStore } from "@/stores/authStore";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isBackendConfigured } from "@/lib/api";
 import OnboardingPage from "@/pages/OnboardingPage";
 import SignInPage from "@/pages/SignInPage";
 import SignUpPage from "@/pages/SignUpPage";
@@ -27,7 +27,7 @@ function RequireOnboarding({ children }: { children: React.ReactNode }) {
 
   if (!done) return <Navigate to="/onboarding" replace />;
 
-  if (isSupabaseConfigured()) {
+  if (isBackendConfigured()) {
     if (!initialized) {
       return (
         <div className="flex min-h-dvh items-center justify-center bg-ink-950 text-neutral-400">

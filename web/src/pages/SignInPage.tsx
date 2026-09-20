@@ -3,8 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
-import { ensureSupabaseSession } from "@/lib/auth";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isBackendConfigured } from "@/lib/api";
 import { analytics } from "@/services/analyticsService";
 import { AppModal } from "@/components/AppModal";
 
@@ -20,8 +19,8 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
 
   const finish = async () => {
-    await ensureSupabaseSession();
-    await usePlaylistStore.getState().hydrateFromSupabase();
+    analytics.setUserId(useAuthStore.getState().user?.id ?? null);
+    await usePlaylistStore.getState().hydrateFromBackend();
     navigate("/", { replace: true });
   };
 
@@ -31,8 +30,8 @@ export default function SignInPage() {
       setError("Please enter your email and password.");
       return;
     }
-    if (!isSupabaseConfigured()) {
-      setError("Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+    if (!isBackendConfigured()) {
+      setError("Backend is not configured. Add VITE_API_URL pointing to your Railway service.");
       return;
     }
     setLoading(true);

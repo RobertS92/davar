@@ -3,14 +3,38 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Database = require('better-sqlite3');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.warn('WARNING: JWT_SECRET is not set. Set it in Railway before going live.');
+}
+
 const app = express();
-const db = new Database('scripture.db');
+
+// Persist SQLite on a Railway volume when DATABASE_PATH is set (e.g. /data/scripture.db)
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'scripture.db');
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+const db = new Database(dbPath);
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+const corsOrigin = process.env.CORS_ORIGIN;
+app.use(
+  cors(
+    corsOrigin
+      ? {
+          origin: corsOrigin.split(',').map((s) => s.trim()),
+          credentials: true,
+        }
+      : undefined
+  )
+);
+app.use(express.json({ limit: '2mb' }));
 
 // Initialize database
 db.exec(`
@@ -76,7 +100,7 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ message: 'Access token required' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+  jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
       return res.status(403).json({ message: 'Invalid or expired token' });
     }
@@ -91,8 +115,8 @@ const generateId = () => {
 };
 
 const generateTokens = (userId) => {
-  const accessToken = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
-  const refreshToken = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
+  const refreshToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30d' });
   return { accessToken, refreshToken };
 };
 
@@ -547,8 +571,6 @@ app.post('/api/analytics/events', (req, res) => {
 });
 
 // Serve web PWA build when present (no auth / no paid tiers)
-const path = require('path');
-const fs = require('fs');
 const webDist = path.join(__dirname, '..', 'web', 'dist');
 if (fs.existsSync(webDist)) {
   app.use(express.static(webDist));
@@ -562,6 +584,7 @@ if (fs.existsSync(webDist)) {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Scripture Backend running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Davar backend running on port ${PORT}`);
+  console.log(`Database: ${dbPath}`);
 });
