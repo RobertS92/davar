@@ -45,6 +45,8 @@ npx vercel --prod
 
 Optional: keep `web/api/*` as same-origin fallbacks; the app prefers `VITE_API_URL` for all API calls.
 
+**If Railway build fails on `better-sqlite3` / Node 24:** pull the latest `backend/` (uses sql.js, no native compile), set service **Root Directory** to `backend`, prefer **Dockerfile** builder, then redeploy.
+
 ## 3. Local development
 
 ```bash
