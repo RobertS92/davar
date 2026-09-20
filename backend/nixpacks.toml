@@ -1,0 +1,6 @@
+# Fallback if Railway uses Railpack/Nixpacks instead of Dockerfile
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[variables]
+NIXPACKS_NODE_VERSION = "20"

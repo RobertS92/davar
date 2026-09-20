@@ -1,6 +1,6 @@
 # Davar Backend (Railway)
 
-Express + SQLite API for auth, playlist sync, analytics, AI, and TTS.
+Express + SQLite (via **sql.js**, pure WASM — no native compile) for auth, playlist sync, analytics, AI, and TTS.
 
 ## Features
 
@@ -39,7 +39,9 @@ Server: `http://localhost:3000` · Health: `GET /health`
 4. Set `JWT_SECRET`, `OPENAI_API_KEY`, `CORS_ORIGIN`, `DATABASE_PATH=/data/scripture.db`
 5. Deploy — copy the public HTTPS URL into the web app as `VITE_API_URL`
 
-Dockerfile + `railway.json` are included for reproducible builds (`better-sqlite3` native module).
+Dockerfile + `railway.toml` are included. The DB uses **sql.js** (no `better-sqlite3` native build), so Railpack/Nixpacks on Node 24 also works.
+
+If Railway shows a Railpack build instead of Docker: open the service → **Settings** → **Build** → set **Builder** to **Dockerfile**, with Root Directory `backend`. Then redeploy.
 
 CLI alternative:
 

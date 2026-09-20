@@ -2,9 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { openDatabase } = require('./db');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
@@ -16,11 +16,7 @@ const app = express();
 
 // Persist SQLite on a Railway volume when DATABASE_PATH is set (e.g. /data/scripture.db)
 const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'scripture.db');
-const dbDir = path.dirname(dbPath);
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
-}
-const db = new Database(dbPath);
+let db;
 
 // Middleware
 const corsOrigin = process.env.CORS_ORIGIN;
@@ -36,8 +32,7 @@ app.use(
 );
 app.use(express.json({ limit: '2mb' }));
 
-// Initialize database
-db.exec(`
+const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
@@ -89,7 +84,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
   CREATE INDEX IF NOT EXISTS idx_events_user ON analytics_events(user_id);
   CREATE INDEX IF NOT EXISTS idx_events_timestamp ON analytics_events(timestamp);
-`);
+`;
 
 // Auth middleware
 const authenticateToken = (req, res, next) => {
@@ -582,9 +577,18 @@ if (fs.existsSync(webDist)) {
   });
 }
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Davar backend running on port ${PORT}`);
-  console.log(`Database: ${dbPath}`);
+async function start() {
+  db = await openDatabase(dbPath);
+  db.exec(SCHEMA_SQL);
+
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Davar backend running on port ${PORT}`);
+    console.log(`Database: ${dbPath}`);
+  });
+}
+
+start().catch((err) => {
+  console.error('Failed to start backend:', err);
+  process.exit(1);
 });
