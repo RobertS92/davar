@@ -6,12 +6,16 @@ const initSqlJs = require('sql.js');
  * Async SQLite via sql.js (pure WASM — no native compile on Railway).
  * Exposes a small better-sqlite3-compatible surface used by server.js.
  */
-async function openDatabase(dbPath) {
-  const SQL = await initSqlJs();
+async function openDatabase(preferredPath) {
+  // sql.js package main is dist/sql-wasm.js — wasm sits next to it
+  const wasmDir = path.dirname(require.resolve('sql.js'));
+  const SQL = await initSqlJs({
+    locateFile: (file) => path.join(wasmDir, file),
+  });
+
+  const dbPath = resolveWritableDbPath(preferredPath);
   const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  fs.mkdirSync(dir, { recursive: true });
 
   let raw = null;
   if (fs.existsSync(dbPath)) {
@@ -36,7 +40,6 @@ async function openDatabase(dbPath) {
     }, 50);
   };
 
-  // Flush on exit so the last writes land on the volume
   const flush = () => {
     if (saveTimer) {
       clearTimeout(saveTimer);
@@ -59,8 +62,8 @@ async function openDatabase(dbPath) {
   });
 
   return {
+    path: dbPath,
     exec(sql) {
-      // sql.js Database.exec runs multiple statements
       db.exec(sql);
       scheduleSave();
     },
@@ -122,9 +125,37 @@ async function openDatabase(dbPath) {
   };
 }
 
+/** Prefer configured path; fall back to /app/data if /data is not writable (no volume). */
+function resolveWritableDbPath(preferredPath) {
+  const candidates = [
+    preferredPath,
+    path.join(__dirname, 'data', 'scripture.db'),
+    path.join('/tmp', 'scripture.db'),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const dir = path.dirname(candidate);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.W_OK);
+      // Prove we can write
+      const probe = path.join(dir, '.write-test');
+      fs.writeFileSync(probe, 'ok');
+      fs.unlinkSync(probe);
+      if (candidate !== preferredPath) {
+        console.warn(`DATABASE_PATH "${preferredPath}" not writable; using "${candidate}"`);
+      }
+      return candidate;
+    } catch {
+      // try next
+    }
+  }
+
+  throw new Error(`No writable database path. Tried: ${candidates.join(', ')}`);
+}
+
 function normalizeParams(params) {
   if (!params || params.length === 0) return [];
-  // better-sqlite3 allows prepare().run(a, b) — sql.js wants an array
   return params.map((p) => (p === undefined ? null : p));
 }
 

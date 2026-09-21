@@ -15,10 +15,10 @@ if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
 const app = express();
 
 // Persist SQLite on a Railway volume when DATABASE_PATH is set (e.g. /data/scripture.db)
-const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'scripture.db');
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'data', 'scripture.db');
 let db;
 
-// Middleware
+// CORS: reflect request Origin when CORS_ORIGIN unset; otherwise allow listed hosts
 const corsOrigin = process.env.CORS_ORIGIN;
 app.use(
   cors(
@@ -27,10 +27,19 @@ app.use(
           origin: corsOrigin.split(',').map((s) => s.trim()),
           credentials: true,
         }
-      : undefined
+      : {
+          origin: true,
+          credentials: true,
+        }
   )
 );
+app.options('*', cors());
 app.use(express.json({ limit: '2mb' }));
+
+// Health before anything else (Railway healthchecks)
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', dbReady: !!db });
+});
 
 const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS users (
@@ -457,11 +466,6 @@ app.get('/analytics/summary', (req, res) => {
   }
 });
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
 // ============ AI / TTS (web + native clients) ============
 
 function getOpenAIKey() {
@@ -565,17 +569,36 @@ app.post('/api/analytics/events', (req, res) => {
   }
 });
 
-// Serve web PWA build when present (no auth / no paid tiers)
+// Serve web PWA build when present (API routes above take precedence)
 const webDist = path.join(__dirname, '..', 'web', 'dist');
 if (fs.existsSync(webDist)) {
   app.use(express.static(webDist));
   app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/auth') || req.path.startsWith('/playlists') || req.path.startsWith('/analytics') || req.path.startsWith('/api') || req.path === '/health') {
+    if (
+      req.path.startsWith('/auth') ||
+      req.path.startsWith('/playlists') ||
+      req.path.startsWith('/analytics') ||
+      req.path.startsWith('/api') ||
+      req.path === '/health'
+    ) {
       return next();
     }
     res.sendFile(path.join(webDist, 'index.html'));
   });
 }
+
+// Explicit 405 for API paths hit with wrong method (avoids opaque proxy errors)
+app.use((req, res, next) => {
+  if (
+    req.path.startsWith('/auth') ||
+    req.path.startsWith('/playlists') ||
+    req.path.startsWith('/analytics') ||
+    req.path.startsWith('/api')
+  ) {
+    return res.status(405).json({ message: `Method ${req.method} not allowed for ${req.path}` });
+  }
+  next();
+});
 
 async function start() {
   db = await openDatabase(dbPath);
@@ -584,7 +607,7 @@ async function start() {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Davar backend running on port ${PORT}`);
-    console.log(`Database: ${dbPath}`);
+    console.log(`Database: ${db.path}`);
   });
 }
 
