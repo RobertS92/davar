@@ -1,0 +1,6 @@
+{
+  "provider": "railpack",
+  "buildVars": {
+    "RAILPACK_NODE_VERSION": "20"
+  }
+}

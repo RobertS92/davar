@@ -36,6 +36,14 @@ app.use(
 app.options('*', cors());
 app.use(express.json({ limit: '2mb' }));
 
+// Require DB for API routes (health stays available always)
+function requireDb(req, res, next) {
+  if (!db) {
+    return res.status(503).json({ message: 'Database is starting up. Try again in a moment.' });
+  }
+  next();
+}
+
 // Health before anything else (Railway healthchecks)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', dbReady: !!db });
@@ -127,7 +135,7 @@ const generateTokens = (userId) => {
 // ============ AUTH ENDPOINTS ============
 
 // Sign Up
-app.post('/auth/signup', async (req, res) => {
+app.post('/auth/signup', requireDb, async (req, res) => {
   try {
     const { email, password, displayName } = req.body;
 
@@ -172,7 +180,7 @@ app.post('/auth/signup', async (req, res) => {
 });
 
 // Sign In
-app.post('/auth/signin', async (req, res) => {
+app.post('/auth/signin', requireDb, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -216,13 +224,13 @@ app.post('/auth/signin', async (req, res) => {
 });
 
 // Sign Out
-app.post('/auth/signout', authenticateToken, (req, res) => {
+app.post('/auth/signout', requireDb, authenticateToken, (req, res) => {
   // In a production app, you'd invalidate the token here
   res.json({ message: 'Signed out successfully' });
 });
 
 // Verify Token
-app.get('/auth/verify', authenticateToken, (req, res) => {
+app.get('/auth/verify', requireDb, authenticateToken, (req, res) => {
   const user = db.prepare('SELECT id, email, display_name, created_at, last_login_at FROM users WHERE id = ?')
     .get(req.user.userId);
 
@@ -244,7 +252,7 @@ app.get('/auth/verify', authenticateToken, (req, res) => {
 // ============ PLAYLIST ENDPOINTS ============
 
 // Get user playlists
-app.get('/playlists', authenticateToken, (req, res) => {
+app.get('/playlists', requireDb, authenticateToken, (req, res) => {
   try {
     const playlists = db.prepare('SELECT * FROM playlists WHERE user_id = ? ORDER BY updated_at DESC')
       .all(req.user.userId);
@@ -275,7 +283,7 @@ app.get('/playlists', authenticateToken, (req, res) => {
 });
 
 // Sync playlist
-app.post('/playlists/sync', authenticateToken, (req, res) => {
+app.post('/playlists/sync', requireDb, authenticateToken, (req, res) => {
   try {
     const { playlist } = req.body;
 
@@ -342,7 +350,7 @@ app.post('/playlists/sync', authenticateToken, (req, res) => {
 });
 
 // Delete playlist
-app.delete('/playlists/:id', authenticateToken, (req, res) => {
+app.delete('/playlists/:id', requireDb, authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM playlists WHERE id = ? AND user_id = ?')
       .run(req.params.id, req.user.userId);
@@ -356,7 +364,7 @@ app.delete('/playlists/:id', authenticateToken, (req, res) => {
 // ============ ANALYTICS ENDPOINTS ============
 
 // Track events
-app.post('/analytics/events', (req, res) => {
+app.post('/analytics/events', requireDb, (req, res) => {
   try {
     const { events } = req.body;
 
@@ -540,7 +548,7 @@ app.post('/api/tts', async (req, res) => {
 });
 
 // Alias analytics path used by web app
-app.post('/api/analytics/events', (req, res) => {
+app.post('/api/analytics/events', requireDb, (req, res) => {
   try {
     const { events } = req.body;
     const insert = db.prepare(`
@@ -601,14 +609,25 @@ app.use((req, res, next) => {
 });
 
 async function start() {
-  db = await openDatabase(dbPath);
-  db.exec(SCHEMA_SQL);
-
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Davar backend running on port ${PORT}`);
-    console.log(`Database: ${db.path}`);
+
+  // Listen immediately so Railway healthchecks succeed while DB opens
+  await new Promise((resolve, reject) => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Davar backend listening on port ${PORT}`);
+      resolve(server);
+    });
+    server.on('error', reject);
   });
+
+  try {
+    db = await openDatabase(dbPath);
+    db.exec(SCHEMA_SQL);
+    console.log(`Database ready: ${db.path}`);
+  } catch (err) {
+    console.error('Database failed to open:', err);
+    // Keep process alive for health diagnostics; API routes return 503
+  }
 }
 
 start().catch((err) => {

@@ -1,21 +1,16 @@
 const fs = require('fs');
 const path = require('path');
-const initSqlJs = require('sql.js');
+// Pure JS build — no separate .wasm file to locate (more reliable on Railway)
+const initSqlJs = require('sql.js/dist/sql-asm.js');
 
 /**
- * Async SQLite via sql.js (pure WASM — no native compile on Railway).
+ * Async SQLite via sql.js (pure JS — no native compile, no wasm file).
  * Exposes a small better-sqlite3-compatible surface used by server.js.
  */
 async function openDatabase(preferredPath) {
-  // sql.js package main is dist/sql-wasm.js — wasm sits next to it
-  const wasmDir = path.dirname(require.resolve('sql.js'));
-  const SQL = await initSqlJs({
-    locateFile: (file) => path.join(wasmDir, file),
-  });
-
+  const SQL = await initSqlJs();
   const dbPath = resolveWritableDbPath(preferredPath);
-  const dir = path.dirname(dbPath);
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
   let raw = null;
   if (fs.existsSync(dbPath)) {
@@ -125,12 +120,12 @@ async function openDatabase(preferredPath) {
   };
 }
 
-/** Prefer configured path; fall back to /app/data if /data is not writable (no volume). */
+/** Prefer configured path; fall back if not writable (missing Railway volume). */
 function resolveWritableDbPath(preferredPath) {
   const candidates = [
     preferredPath,
     path.join(__dirname, 'data', 'scripture.db'),
-    path.join('/tmp', 'scripture.db'),
+    path.join('/tmp', 'davar-scripture.db'),
   ].filter(Boolean);
 
   for (const candidate of candidates) {
@@ -138,16 +133,15 @@ function resolveWritableDbPath(preferredPath) {
       const dir = path.dirname(candidate);
       fs.mkdirSync(dir, { recursive: true });
       fs.accessSync(dir, fs.constants.W_OK);
-      // Prove we can write
-      const probe = path.join(dir, '.write-test');
+      const probe = path.join(dir, `.write-test-${process.pid}`);
       fs.writeFileSync(probe, 'ok');
       fs.unlinkSync(probe);
       if (candidate !== preferredPath) {
         console.warn(`DATABASE_PATH "${preferredPath}" not writable; using "${candidate}"`);
       }
       return candidate;
-    } catch {
-      // try next
+    } catch (err) {
+      console.warn(`Skipping db path "${candidate}": ${err.message}`);
     }
   }
 
