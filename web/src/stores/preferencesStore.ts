@@ -7,6 +7,7 @@ import type {
   PlaylistMode,
   Translation,
 } from "@/types/bible";
+import { applyTheme, type ThemeId } from "@/theme/themes";
 
 interface PreferencesState {
   defaultTranslation: Translation;
@@ -21,6 +22,7 @@ interface PreferencesState {
   textSize: number;
   nightMode: boolean;
   showVerseNumbersInRead: boolean;
+  themeId: ThemeId;
   hasCompletedOnboarding: boolean;
   setDefaultTranslation: (translation: Translation) => void;
   setDefaultConsumptionMode: (mode: ConsumptionMode) => void;
@@ -34,6 +36,7 @@ interface PreferencesState {
   setTextSize: (size: number) => void;
   setNightMode: (night: boolean) => void;
   setShowVerseNumbersInRead: (show: boolean) => void;
+  setThemeId: (themeId: ThemeId) => void;
   setHasCompletedOnboarding: (completed: boolean) => void;
   resetPreferences: () => void;
 }
@@ -51,6 +54,7 @@ const defaults = {
   textSize: 18,
   nightMode: true,
   showVerseNumbersInRead: true,
+  themeId: "tabernacle" as ThemeId,
   hasCompletedOnboarding: false,
 };
 
@@ -70,12 +74,22 @@ export const usePreferencesStore = create<PreferencesState>()(
       setTextSize: (textSize) => set({ textSize }),
       setNightMode: (nightMode) => set({ nightMode }),
       setShowVerseNumbersInRead: (showVerseNumbersInRead) => set({ showVerseNumbersInRead }),
+      setThemeId: (themeId) => {
+        applyTheme(themeId);
+        set({ themeId });
+      },
       setHasCompletedOnboarding: (hasCompletedOnboarding) => set({ hasCompletedOnboarding }),
-      resetPreferences: () => set(defaults),
+      resetPreferences: () => {
+        applyTheme(defaults.themeId);
+        set(defaults);
+      },
     }),
     {
       name: "davar-web-preferences",
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        if (state?.themeId) applyTheme(state.themeId);
+      },
     }
   )
 );

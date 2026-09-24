@@ -14,8 +14,67 @@ export interface AnalyticsEvent {
   };
 }
 
+export interface AnalyticsSummary {
+  totalEvents: number;
+  uniqueSessions: number;
+  topEvents: { name: string; count: number }[];
+  topStations: { name: string; count: number }[];
+  topModes: { name: string; count: number }[];
+  topFeatures: { name: string; count: number }[];
+  recent: AnalyticsEvent[];
+}
+
 const LOCAL_KEY = "davar-web-analytics";
 const SESSION_KEY = "davar-web-session";
+
+function rankCounts(map: Map<string, number>, limit = 8) {
+  return [...map.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name, count]) => ({ name, count }));
+}
+
+export function getLocalAnalyticsEvents(): AnalyticsEvent[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    return raw ? (JSON.parse(raw) as AnalyticsEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getLocalAnalyticsSummary(): AnalyticsSummary {
+  const events = getLocalAnalyticsEvents();
+  const sessions = new Set<string>();
+  const eventCounts = new Map<string, number>();
+  const stations = new Map<string, number>();
+  const modes = new Map<string, number>();
+  const features = new Map<string, number>();
+
+  for (const event of events) {
+    if (event.sessionId) sessions.add(event.sessionId);
+    eventCounts.set(event.eventName, (eventCounts.get(event.eventName) || 0) + 1);
+
+    const station = event.properties?.stationId || event.properties?.station;
+    if (typeof station === "string") stations.set(station, (stations.get(station) || 0) + 1);
+
+    const mode = event.properties?.mode || event.properties?.modeId;
+    if (typeof mode === "string") modes.set(mode, (modes.get(mode) || 0) + 1);
+
+    const feature = event.properties?.feature || event.properties?.surface;
+    if (typeof feature === "string") features.set(feature, (features.get(feature) || 0) + 1);
+  }
+
+  return {
+    totalEvents: events.length,
+    uniqueSessions: sessions.size,
+    topEvents: rankCounts(eventCounts),
+    topStations: rankCounts(stations),
+    topModes: rankCounts(modes),
+    topFeatures: rankCounts(features),
+    recent: events.slice(-20).reverse(),
+  };
+}
 
 class AnalyticsService {
   private sessionId: string;
@@ -66,8 +125,7 @@ class AnalyticsService {
 
   private storeLocal(event: AnalyticsEvent) {
     try {
-      const raw = localStorage.getItem(LOCAL_KEY);
-      const events: AnalyticsEvent[] = raw ? JSON.parse(raw) : [];
+      const events = getLocalAnalyticsEvents();
       events.push(event);
       localStorage.setItem(LOCAL_KEY, JSON.stringify(events.slice(-500)));
     } catch {

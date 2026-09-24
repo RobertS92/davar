@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { openDatabase } = require('./db');
 require('dotenv').config();
 
@@ -101,7 +102,78 @@ const SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
   CREATE INDEX IF NOT EXISTS idx_events_user ON analytics_events(user_id);
   CREATE INDEX IF NOT EXISTS idx_events_timestamp ON analytics_events(timestamp);
+
+  CREATE TABLE IF NOT EXISTS shared_playlists (
+    code TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    playlist_json TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    translation TEXT,
+    total_duration INTEGER DEFAULT 0,
+    item_count INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    import_count INTEGER DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS community_playlists (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    display_name TEXT,
+    playlist_json TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    translation TEXT,
+    total_duration INTEGER DEFAULT 0,
+    item_count INTEGER DEFAULT 0,
+    vote_count INTEGER DEFAULT 0,
+    import_count INTEGER DEFAULT 0,
+    is_featured INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS community_votes (
+    user_id TEXT NOT NULL,
+    playlist_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, playlist_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_shared_code ON shared_playlists(code);
+  CREATE INDEX IF NOT EXISTS idx_community_votes ON community_playlists(vote_count DESC);
+  CREATE INDEX IF NOT EXISTS idx_community_created ON community_playlists(created_at DESC);
 `;
+
+function generateShareCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.randomBytes(6);
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += alphabet[bytes[i] % alphabet.length];
+  }
+  return code;
+}
+
+function clampLimit(raw, fallback = 20, max = 50) {
+  const n = Number.parseInt(String(raw ?? fallback), 10);
+  if (!Number.isFinite(n) || n < 1) return fallback;
+  return Math.min(n, max);
+}
+
+function playlistPayloadMeta(playlist) {
+  const items = Array.isArray(playlist?.items) ? playlist.items : [];
+  return {
+    title: String(playlist?.title || 'Untitled').slice(0, 200),
+    description: playlist?.description ? String(playlist.description).slice(0, 1000) : null,
+    translation: String(playlist?.translation || 'KJV').slice(0, 16),
+    totalDuration: Number(playlist?.totalDuration) || 0,
+    itemCount: items.length,
+    json: JSON.stringify(playlist),
+  };
+}
 
 // Auth middleware
 const authenticateToken = (req, res, next) => {
@@ -577,6 +649,211 @@ app.post('/api/analytics/events', requireDb, (req, res) => {
   }
 });
 
+// ============ SOCIAL SHARE + COMMUNITY (JWT identity) ============
+
+app.post('/social/share', requireDb, authenticateToken, (req, res) => {
+  try {
+    const { playlist } = req.body || {};
+    if (!playlist || !playlist.title || !Array.isArray(playlist.items)) {
+      return res.status(400).json({ message: 'Playlist with title and items required' });
+    }
+    if (playlist.items.length > 200) {
+      return res.status(400).json({ message: 'Playlist is too large to share' });
+    }
+
+    const meta = playlistPayloadMeta(playlist);
+    const now = new Date();
+    const expires = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+    let code = generateShareCode();
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const existing = db.prepare('SELECT code FROM shared_playlists WHERE code = ?').get(code);
+      if (!existing) break;
+      code = generateShareCode();
+    }
+
+    db.prepare(`
+      INSERT INTO shared_playlists
+        (code, user_id, playlist_json, title, description, translation, total_duration, item_count, created_at, expires_at, import_count)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    `).run(
+      code,
+      req.user.userId,
+      meta.json,
+      meta.title,
+      meta.description,
+      meta.translation,
+      meta.totalDuration,
+      meta.itemCount,
+      now.toISOString(),
+      expires.toISOString()
+    );
+
+    res.json({ code, expiresAt: expires.toISOString() });
+  } catch (error) {
+    console.error('Share create error:', error);
+    res.status(500).json({ message: 'Failed to create share code' });
+  }
+});
+
+app.get('/social/import/:code', requireDb, (req, res) => {
+  try {
+    const code = String(req.params.code || '').toUpperCase();
+    const row = db.prepare('SELECT * FROM shared_playlists WHERE code = ?').get(code);
+    if (!row) return res.status(404).json({ message: 'Share code not found' });
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      return res.status(410).json({ message: 'This share code has expired' });
+    }
+    db.prepare('UPDATE shared_playlists SET import_count = import_count + 1 WHERE code = ?').run(code);
+    res.json({
+      code: row.code,
+      playlist: JSON.parse(row.playlist_json),
+      expiresAt: row.expires_at,
+      importCount: row.import_count + 1,
+    });
+  } catch (error) {
+    console.error('Share import error:', error);
+    res.status(500).json({ message: 'Failed to import share' });
+  }
+});
+
+app.post('/social/community/submit', requireDb, authenticateToken, (req, res) => {
+  try {
+    const { playlist, displayName } = req.body || {};
+    if (!playlist || !playlist.title || !Array.isArray(playlist.items)) {
+      return res.status(400).json({ message: 'Playlist with title and items required' });
+    }
+    if (playlist.items.length > 200) {
+      return res.status(400).json({ message: 'Playlist is too large to submit' });
+    }
+
+    const user = db.prepare('SELECT display_name, email FROM users WHERE id = ?').get(req.user.userId);
+    const meta = playlistPayloadMeta(playlist);
+    const id = generateId();
+    const now = new Date().toISOString();
+    const name =
+      (displayName && String(displayName).slice(0, 80)) ||
+      user?.display_name ||
+      (user?.email ? user.email.split('@')[0] : 'Davar user');
+
+    db.prepare(`
+      INSERT INTO community_playlists
+        (id, user_id, display_name, playlist_json, title, description, translation, total_duration, item_count, vote_count, import_count, is_featured, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)
+    `).run(
+      id,
+      req.user.userId,
+      name,
+      meta.json,
+      meta.title,
+      meta.description,
+      meta.translation,
+      meta.totalDuration,
+      meta.itemCount,
+      now
+    );
+
+    res.json({ id, title: meta.title, displayName: name, createdAt: now });
+  } catch (error) {
+    console.error('Community submit error:', error);
+    res.status(500).json({ message: 'Failed to submit to community' });
+  }
+});
+
+app.get('/social/community', requireDb, (req, res) => {
+  try {
+    const sort = String(req.query.sort || 'popular');
+    const limit = clampLimit(req.query.limit, 20, 50);
+    let orderBy = 'vote_count DESC, created_at DESC';
+    if (sort === 'new') orderBy = 'created_at DESC';
+    if (sort === 'featured') orderBy = 'is_featured DESC, vote_count DESC, created_at DESC';
+
+    const rows = db.prepare(`
+      SELECT id, user_id, display_name, title, description, translation, total_duration, item_count,
+             vote_count, import_count, is_featured, created_at
+      FROM community_playlists
+      ORDER BY ${orderBy}
+      LIMIT ?
+    `).all(limit);
+
+    res.json({
+      playlists: rows.map((r) => ({
+        id: r.id,
+        userId: r.user_id,
+        displayName: r.display_name,
+        title: r.title,
+        description: r.description,
+        translation: r.translation,
+        totalDuration: r.total_duration,
+        itemCount: r.item_count,
+        voteCount: r.vote_count,
+        importCount: r.import_count,
+        isFeatured: r.is_featured === 1,
+        createdAt: r.created_at,
+      })),
+    });
+  } catch (error) {
+    console.error('Community list error:', error);
+    res.status(500).json({ message: 'Failed to list community playlists' });
+  }
+});
+
+app.get('/social/community/:id', requireDb, (req, res) => {
+  try {
+    const row = db.prepare('SELECT * FROM community_playlists WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Community playlist not found' });
+    db.prepare('UPDATE community_playlists SET import_count = import_count + 1 WHERE id = ?').run(row.id);
+    res.json({
+      id: row.id,
+      displayName: row.display_name,
+      title: row.title,
+      description: row.description,
+      translation: row.translation,
+      totalDuration: row.total_duration,
+      itemCount: row.item_count,
+      voteCount: row.vote_count,
+      importCount: row.import_count + 1,
+      isFeatured: row.is_featured === 1,
+      createdAt: row.created_at,
+      playlist: JSON.parse(row.playlist_json),
+    });
+  } catch (error) {
+    console.error('Community detail error:', error);
+    res.status(500).json({ message: 'Failed to load community playlist' });
+  }
+});
+
+app.post('/social/community/:id/vote', requireDb, authenticateToken, (req, res) => {
+  try {
+    const playlistId = req.params.id;
+    const exists = db.prepare('SELECT id FROM community_playlists WHERE id = ?').get(playlistId);
+    if (!exists) return res.status(404).json({ message: 'Community playlist not found' });
+
+    const vote = db.prepare('SELECT user_id FROM community_votes WHERE user_id = ? AND playlist_id = ?')
+      .get(req.user.userId, playlistId);
+
+    const apply = db.transaction(() => {
+      if (vote) {
+        db.prepare('DELETE FROM community_votes WHERE user_id = ? AND playlist_id = ?')
+          .run(req.user.userId, playlistId);
+        db.prepare('UPDATE community_playlists SET vote_count = CASE WHEN vote_count > 0 THEN vote_count - 1 ELSE 0 END WHERE id = ?')
+          .run(playlistId);
+        return { voted: false };
+      }
+      db.prepare('INSERT INTO community_votes (user_id, playlist_id, created_at) VALUES (?, ?, ?)')
+        .run(req.user.userId, playlistId, new Date().toISOString());
+      db.prepare('UPDATE community_playlists SET vote_count = vote_count + 1 WHERE id = ?').run(playlistId);
+      return { voted: true };
+    });
+
+    const result = apply();
+    const count = db.prepare('SELECT vote_count FROM community_playlists WHERE id = ?').get(playlistId);
+    res.json({ voted: result.voted, voteCount: count?.vote_count || 0 });
+  } catch (error) {
+    console.error('Community vote error:', error);
+    res.status(500).json({ message: 'Failed to vote' });
+  }
+});
+
 // Serve web PWA build when present (API routes above take precedence)
 const webDist = path.join(__dirname, '..', 'web', 'dist');
 if (fs.existsSync(webDist)) {
@@ -587,6 +864,7 @@ if (fs.existsSync(webDist)) {
       req.path.startsWith('/playlists') ||
       req.path.startsWith('/analytics') ||
       req.path.startsWith('/api') ||
+      req.path.startsWith('/social') ||
       req.path === '/health'
     ) {
       return next();
@@ -601,7 +879,8 @@ app.use((req, res, next) => {
     req.path.startsWith('/auth') ||
     req.path.startsWith('/playlists') ||
     req.path.startsWith('/analytics') ||
-    req.path.startsWith('/api')
+    req.path.startsWith('/api') ||
+    req.path.startsWith('/social')
   ) {
     return res.status(405).json({ message: `Method ${req.method} not allowed for ${req.path}` });
   }

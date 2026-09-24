@@ -10,7 +10,7 @@ Users can **Sign in**, **Sign up**, or **Continue without an account**. No prici
 ## 1. Railway (backend)
 
 1. Create a project at [railway.app](https://railway.app)
-2. Deploy the `backend/` folder (GitHub root directory = `backend`, or Railway CLI from that folder)
+2. Deploy backend: set Railway **Root Directory** to `backend`, **or** leave root as the repo and use the root `Dockerfile` / `railway.toml` (they build from `backend/`).
 3. Set environment variables:
 
 | Variable | Required | Notes |

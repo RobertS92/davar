@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Search, Users } from "lucide-react";
 import { PlaylistCard } from "@/components/PlaylistCard";
 import { Screen, ScreenHeader } from "@/components/Screen";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { cn } from "@/lib/cn";
 
-type Filter = "all" | "favorites" | "recent";
+type Filter = "all" | "favorites" | "offline" | "recent";
 
 export default function LibraryPage() {
   const playlists = usePlaylistStore((s) => s.playlists);
@@ -16,6 +17,7 @@ export default function LibraryPage() {
   const filtered = useMemo(() => {
     let list = [...playlists];
     if (filter === "favorites") list = list.filter((p) => p.isFavorite);
+    if (filter === "offline") list = list.filter((p) => p.isDownloaded);
     if (filter === "recent") {
       list = recentIds
         .map((id) => playlists.find((p) => p.id === id))
@@ -37,6 +39,15 @@ export default function LibraryPage() {
       <ScreenHeader
         title="Library"
         subtitle={`${playlists.length} playlists saved on this device`}
+        right={
+          <Link
+            to="/community"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-2 text-xs font-medium text-neutral-200"
+          >
+            <Users className="h-3.5 w-3.5" />
+            Community
+          </Link>
+        }
       />
 
       <div className="px-5 pb-4 pt-4">
@@ -50,8 +61,8 @@ export default function LibraryPage() {
           />
         </div>
 
-        <div className="mb-5 flex gap-2">
-          {(["all", "favorites", "recent"] as Filter[]).map((f) => (
+        <div className="mb-5 flex flex-wrap gap-2">
+          {(["all", "favorites", "offline", "recent"] as Filter[]).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -70,7 +81,7 @@ export default function LibraryPage() {
             No playlists yet. Create one from Home or Stations.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
             {filtered.map((p) => (
               <PlaylistCard key={p.id} playlist={p} />
             ))}
