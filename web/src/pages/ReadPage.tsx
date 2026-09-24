@@ -22,6 +22,32 @@ export default function ReadPage() {
     if (playlist) addToRecent(playlist.id);
   }, [playlist?.id]);
 
+  useEffect(() => {
+    if (!playlist) return;
+    if (playlist.lastPlayedItemId) {
+      const found = playlist.items.findIndex((i) => i.id === playlist.lastPlayedItemId);
+      if (found >= 0) setIndex(found);
+    }
+  }, [playlist?.id]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setIndex((i) => Math.min((playlist?.items.length || 1) - 1, i + 1));
+      } else if (e.key === "Escape" && playlist) {
+        navigate(`/playlist/${playlist.id}`);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [playlist, navigate]);
+
   if (!playlist) {
     return (
       <div className="flex min-h-dvh items-center justify-center px-6 text-center">
@@ -123,7 +149,7 @@ export default function ReadPage() {
           </button>
         </div>
         <p className={cn("mt-4 text-center text-xs", nightMode ? "text-neutral-500" : "text-neutral-500")}>
-          Swipe left or right on mobile to move between cards
+          Swipe on mobile · Arrow keys on desktop
         </p>
       </div>
     </div>

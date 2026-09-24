@@ -212,7 +212,7 @@ export function resumeSpeaking(): void {
 
 export async function speakText(
   text: string,
-  options: { voice?: TTSVoice; speed?: number; preferOpenAi?: boolean } = {},
+  options: { voice?: TTSVoice; speed?: number; preferOpenAi?: boolean; startAt?: number } = {},
   handlers: SpeakHandlers = {}
 ): Promise<"openai" | "speech"> {
   stopSpeaking();
@@ -223,7 +223,7 @@ export async function speakText(
   if (preferOpenAi) {
     try {
       const { audioUri } = await generateTTSAudio(text, { voice, speed });
-      await playAudioUri(audioUri, handlers);
+      await playAudioUri(audioUri, handlers, { speed, startAt: options.startAt });
       return "openai";
     } catch {
       openAiAvailable = false;
@@ -269,10 +269,25 @@ export async function speakText(
   });
 }
 
-function playAudioUri(uri: string, handlers: SpeakHandlers): Promise<void> {
+function playAudioUri(
+  uri: string,
+  handlers: SpeakHandlers,
+  options: { speed?: number; startAt?: number } = {}
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const audio = new Audio(uri);
     currentAudio = audio;
+    const speed = options.speed || 1;
+    audio.playbackRate = Math.min(2, Math.max(0.5, speed));
+    audio.onloadedmetadata = () => {
+      if (options.startAt && Number.isFinite(options.startAt) && options.startAt > 0) {
+        try {
+          audio.currentTime = Math.min(options.startAt, audio.duration || options.startAt);
+        } catch {
+          // ignore seek failures
+        }
+      }
+    };
     audio.onplay = () => handlers.onStart?.();
     audio.ontimeupdate = () => {
       handlers.onTimeUpdate?.(audio.currentTime, audio.duration || 0);
@@ -293,6 +308,23 @@ function playAudioUri(uri: string, handlers: SpeakHandlers): Promise<void> {
       reject(err);
     });
   });
+}
+
+export function seekSpeaking(seconds: number): void {
+  if (currentAudio && Number.isFinite(seconds)) {
+    const max = Number.isFinite(currentAudio.duration) ? currentAudio.duration : seconds;
+    currentAudio.currentTime = Math.max(0, Math.min(seconds, max));
+  }
+}
+
+export function getSpeakingPosition(): number {
+  return currentAudio?.currentTime ?? 0;
+}
+
+export function setSpeakingRate(speed: number): void {
+  if (currentAudio) {
+    currentAudio.playbackRate = Math.min(2, Math.max(0.5, speed));
+  }
 }
 
 export function warmUpVoices(): void {

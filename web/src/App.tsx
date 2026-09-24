@@ -18,6 +18,9 @@ import EditPlaylistPage from "@/pages/EditPlaylistPage";
 import DeepDivePage from "@/pages/DeepDivePage";
 import ListenPage from "@/pages/ListenPage";
 import ReadPage from "@/pages/ReadPage";
+import SharePlaylistPage from "@/pages/SharePlaylistPage";
+import CommunityPage from "@/pages/CommunityPage";
+import AnalyticsPage from "@/pages/AnalyticsPage";
 
 function RequireOnboarding({ children }: { children: React.ReactNode }) {
   const done = usePreferencesStore((s) => s.hasCompletedOnboarding);
@@ -61,6 +64,10 @@ export default function App() {
         <Route path="/library" element={<LibraryPage />} />
         <Route path="/modes" element={<ModesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/community" element={<CommunityPage />} />
+        <Route path="/share" element={<SharePlaylistPage />} />
+        <Route path="/share/:id" element={<SharePlaylistPage />} />
         <Route path="/deep-dive" element={<DeepDivePage />} />
         <Route path="/create/manual" element={<CreateManualPage />} />
         <Route path="/create/prompt" element={<CreatePromptPage />} />

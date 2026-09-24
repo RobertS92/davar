@@ -1,8 +1,10 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { BookOpen, Home, Library, Moon, Radio, Settings } from "lucide-react";
+import { BookOpen, Home, Library, Moon, Radio, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useStandalone } from "@/hooks/useStandalone";
 import { useEffect } from "react";
+import { applyTheme } from "@/theme/themes";
+import { usePreferencesStore } from "@/stores/preferencesStore";
 
 const tabs = [
   { to: "/", label: "Home", icon: Home, end: true },
@@ -12,13 +14,22 @@ const tabs = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
+const desktopExtra: { to: string; label: string; icon: typeof Users; end?: boolean }[] = [
+  { to: "/community", label: "Community", icon: Users },
+];
+
 export default function AppShell() {
   const location = useLocation();
   const standalone = useStandalone();
+  const themeId = usePreferencesStore((s) => s.themeId);
 
   const hideChrome =
     location.pathname.startsWith("/listen/") ||
     location.pathname.startsWith("/read/");
+
+  useEffect(() => {
+    applyTheme(themeId);
+  }, [themeId]);
 
   // Scroll main content to top on route change (native-app feel)
   useEffect(() => {
@@ -46,7 +57,7 @@ export default function AppShell() {
             </div>
           </div>
           <nav className="flex flex-1 flex-col gap-1">
-            {tabs.map((tab) => (
+            {[...tabs, ...desktopExtra].map((tab) => (
               <NavLink
                 key={tab.to}
                 to={tab.to}
