@@ -5,6 +5,7 @@ import App from "./App";
 import { analytics } from "@/services/analyticsService";
 import { useAuthStore } from "@/stores/authStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
+import { useStudyStore } from "@/stores/studyStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { applyTheme } from "@/theme/themes";
 import "./index.css";
@@ -16,6 +17,7 @@ function Root() {
     void (async () => {
       await useAuthStore.getState().initialize();
       await usePlaylistStore.getState().hydrateFromBackend();
+      await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);
       analytics.setUserId(useAuthStore.getState().user?.id ?? null);
     })();
   }, []);
