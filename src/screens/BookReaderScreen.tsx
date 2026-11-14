@@ -26,7 +26,10 @@ export default function BookReaderScreen() {
   const addNote = useStudyNotesStore((s) => s.addNote);
   const updateNote = useStudyNotesStore((s) => s.updateNote);
   const deleteNote = useStudyNotesStore((s) => s.deleteNote);
-  const fontSize = usePreferencesStore((s) => s.textSize);
+  const defaultFontSize = usePreferencesStore((s) => s.textSize);
+  const [fontSize, setFontSize] = useState(Math.max(16, defaultFontSize));
+  const [pickerBook, setPickerBook] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<string | null>(null);
   const [verses, setVerses] = useState<BibleVerse[]>([]);
   const [loading, setLoading] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -37,6 +40,7 @@ export default function BookReaderScreen() {
   const [book, chapter] = [position.book, position.chapter];
 
   const chapters = useMemo(() => getAvailableChapters(book), [book]);
+  const pickerChapters = useMemo(() => getAvailableChapters(pickerBook ?? book), [pickerBook, book]);
   const chapterNotes = useMemo(() => notes.filter((n) => n.book === book && (
     n.scope === "book" || (n.chapter === chapter && (n.scope === "chapter" || n.scope === "verse"))
   )), [notes, book, chapter]);
@@ -75,6 +79,7 @@ export default function BookReaderScreen() {
     setEditingId(null);
   };
   const createNote = () => {
+    if (scope === "verse" && selectedVerse === null) return;
     const id = addNote({
       book,
       scope,
@@ -99,32 +104,39 @@ export default function BookReaderScreen() {
     <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: BG }}>
       <View style={{ flexDirection: "row", alignItems: "center", padding: 14, gap: 14, borderBottomWidth: 1, borderColor: "#373737" }}>
         <Pressable onPress={() => nav.goBack()} accessibilityLabel="Close book reader"><Ionicons name="arrow-back" size={23} color={INK} /></Pressable>
-        <Pressable onPress={() => setPickerOpen(!pickerOpen)} style={{ flex: 1 }} accessibilityRole="button" accessibilityLabel="Choose Bible book and chapter">
+        <Pressable onPress={() => { setPickerBook(book); setPickerOpen(!pickerOpen); }} style={{ flex: 1 }} accessibilityRole="button" accessibilityLabel="Choose Bible book and chapter">
           <Text style={{ color: INK, fontSize: 18, fontWeight: "600" }}>{book} {chapter} <Ionicons name="chevron-down" size={15} color={ACCENT} /></Text>
           <Text style={{ color: MUTED, fontSize: 11 }}>KING JAMES VERSION</Text>
         </Pressable>
-        <Pressable onPress={() => setPanelOpen(!panelOpen)} accessibilityLabel={panelOpen ? "Close study notebook" : "Open study notebook"}>
-          <Ionicons name={panelOpen ? "reader" : "bookmarks-outline"} size={24} color={ACCENT} />
+        <Pressable onPress={() => setFontSize((size) => Math.max(16, size - 2))} accessibilityLabel="Decrease Scripture text size" style={{ padding: 5 }}><Text style={{ color: INK, fontSize: 13 }}>A−</Text></Pressable>
+        <Pressable onPress={() => setFontSize((size) => Math.min(32, size + 2))} accessibilityLabel="Increase Scripture text size" style={{ padding: 5 }}><Text style={{ color: INK, fontSize: 17 }}>A+</Text></Pressable>
+        <Pressable onPress={() => { setPickerOpen(false); setPanelOpen(!panelOpen); }} accessibilityLabel={panelOpen ? "Close study notebook" : "Open study notebook"}>
+          <Ionicons name={panelOpen ? "close-circle-outline" : "bookmarks-outline"} size={24} color={ACCENT} />
+          {chapterNotes.length > 0 && <Text style={{ color: ACCENT, fontSize: 10, textAlign: "center" }}>{chapterNotes.length}</Text>}
         </Pressable>
       </View>
 
       {pickerOpen ? (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-          <Text style={{ color: INK, fontSize: 22, marginBottom: 12 }}>Choose a book</Text>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 18, paddingBottom: 60 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+            <Text style={{ color: INK, fontSize: 23, fontWeight: "600" }}>Books & chapters</Text>
+            <Pressable onPress={() => setPickerOpen(false)} accessibilityLabel="Close book selector"><Ionicons name="close" color={INK} size={24} /></Pressable>
+          </View>
+          <Text style={{ color: MUTED, marginBottom: 12 }}>Select a book, then choose a chapter.</Text>
           {BIBLE_BOOKS.map((b) => (
-            <View key={b} style={{ marginBottom: 14 }}>
-              <Pressable onPress={() => {
-                setPosition({ book: b, chapter: 1 });
-                setSelectedVerse(null); setPickerOpen(false);
-              }}>
-                <Text style={{ color: b === book ? ACCENT : INK, fontSize: 16, paddingVertical: 8 }}>{b}</Text>
+            <View key={b} style={{ marginBottom: 6 }}>
+              <Pressable onPress={() => setPickerBook(pickerBook === b ? null : b)}
+                accessibilityRole="button" accessibilityLabel={`Choose chapters in ${b}`}
+                style={{ minHeight: 48, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 8, backgroundColor: pickerBook === b ? "#34312b" : "transparent" }}>
+                <Text style={{ color: pickerBook === b ? ACCENT : INK, fontSize: 17 }}>{b}</Text>
+                <Ionicons name={pickerBook === b ? "chevron-up" : "chevron-down"} size={17} color={MUTED} />
               </Pressable>
-              {b === book && (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {chapters.map((ch) => (
-                    <Pressable key={ch} onPress={() => {
-                      setPosition({ book: b, chapter: ch }); setSelectedVerse(null); setPickerOpen(false);
-                    }} style={{ backgroundColor: ch === chapter ? "#554734" : PAPER, padding: 9, borderRadius: 6, minWidth: 42, alignItems: "center" }}>
+              {pickerBook === b && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 9, padding: 12 }}>
+                  {pickerChapters.map((ch) => (
+                    <Pressable key={ch} accessibilityRole="button" accessibilityLabel={`${b}, chapter ${ch}`}
+                      onPress={() => { setPosition({ book: b, chapter: ch }); setSelectedVerse(null); setPickerOpen(false); setEditingId(null); }}
+                      style={{ backgroundColor: b === book && ch === chapter ? "#68533a" : PAPER, padding: 10, borderRadius: 8, minWidth: 46, minHeight: 44, alignItems: "center", justifyContent: "center" }}>
                       <Text style={{ color: INK }}>{ch}</Text>
                     </Pressable>
                   ))}
@@ -132,13 +144,13 @@ export default function BookReaderScreen() {
               )}
             </View>
           ))}
-        </ScrollView>
-      ) : (
+        </ScrollView>      ) : (
         <View style={{ flex: 1, flexDirection: split ? "row" : "column" }}>
           <View style={{ flex: 1, display: !split && panelOpen ? "none" : "flex" }}>
             <ScrollView key={`${book}-${chapter}`} contentContainerStyle={{ paddingHorizontal: width > 900 ? 42 : 24, paddingTop: 30, paddingBottom: 65 }}>
               <Text style={{ color: ACCENT, fontSize: 13, letterSpacing: 2, textAlign: "center" }}>{book.toUpperCase()}</Text>
-              <Text style={{ color: INK, fontSize: 32, fontWeight: "600", marginBottom: 26, marginTop: 8, textAlign: "center" }}>Chapter {chapter}</Text>
+              <Text style={{ color: INK, fontSize: 32, fontWeight: "600", marginBottom: 12, marginTop: 8, textAlign: "center" }}>Chapter {chapter}</Text>
+              <Text style={{ color: MUTED, textAlign: "center", fontSize: 12, marginBottom: 26 }}>Tap any verse to write or view its notes</Text>
               {loading ? <Text style={{ color: MUTED }}>Loading Scripture…</Text> :
                 verses.length === 0 ? <Text style={{ color: MUTED }}>This chapter is unavailable in the local Bible dataset.</Text> :
                 verses.map((v) => {
@@ -146,7 +158,7 @@ export default function BookReaderScreen() {
                   return <Pressable key={v.verse} onPress={() => selectVerse(v.verse)}
                     accessibilityLabel={`Verse ${v.verse}. Tap to open notes`}
                     style={{ marginBottom: 14, padding: 5, borderRadius: 6, backgroundColor: selectedVerse === v.verse ? "#34312b" : "transparent" }}>
-                    <Text style={{ color: INK, fontSize, lineHeight: fontSize * 1.75 }}>
+                    <Text style={{ color: INK, fontSize, lineHeight: fontSize * 1.75, maxWidth: 760 }}>
                       <Text style={{ color: ACCENT, fontSize: Math.max(12, fontSize - 4) }}>{v.verse} </Text>{v.text}
                       {marked ? <Text style={{ color: ACCENT }}>  ✎</Text> : null}
                     </Text>
@@ -182,7 +194,7 @@ export default function BookReaderScreen() {
                   <View key={n.id} style={{ backgroundColor: "#2e3033", padding: 12, borderRadius: 10, marginBottom: 10 }}>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
                       <Text style={{ color: ACCENT, fontSize: 12 }}>{formatTarget(n)}</Text>
-                      <Pressable onPress={() => deleteNote(n.id)} accessibilityLabel="Delete note"><Ionicons name="trash-outline" color={MUTED} size={18} /></Pressable>
+                      <Pressable onPress={() => setDeleteCandidate(n.id)} accessibilityLabel="Delete note"><Ionicons name="trash-outline" color={MUTED} size={18} /></Pressable>
                     </View>
                     <TextInput multiline value={n.text} onFocus={() => setEditingId(n.id)}
                       onChangeText={(text) => updateNote(n.id, text)}
@@ -190,11 +202,18 @@ export default function BookReaderScreen() {
                       placeholderTextColor="#777"
                       textAlignVertical="top"
                       style={{ color: INK, fontSize: 15, minHeight: editingId === n.id ? 130 : 72, lineHeight: 23 }} />
-                    <Text style={{ color: MUTED, fontSize: 11, marginTop: 8 }}>Saved locally as you type</Text>
+                    <Text style={{ color: MUTED, fontSize: 11, marginTop: 8 }}>Autosaved on this device</Text>
+                    {deleteCandidate === n.id && <View style={{ marginTop: 12, padding: 10, backgroundColor: "#4a302f", borderRadius: 8 }}>
+                      <Text style={{ color: INK, marginBottom: 9 }}>Delete this note permanently?</Text>
+                      <View style={{ flexDirection: "row", gap: 16 }}>
+                        <Pressable onPress={() => setDeleteCandidate(null)} accessibilityLabel="Cancel deleting note"><Text style={{ color: INK }}>Cancel</Text></Pressable>
+                        <Pressable onPress={() => { deleteNote(n.id); setDeleteCandidate(null); }} accessibilityLabel="Confirm deleting note"><Text style={{ color: "#ffd1ca" }}>Delete</Text></Pressable>
+                      </View>
+                    </View>}
                   </View>
                 ))}
                 {shownNotes.length === 0 && <Text style={{ color: MUTED, marginBottom: 18 }}>No notes here yet.</Text>}
-                <Pressable onPress={createNote} style={{ borderColor: ACCENT, borderWidth: 1, borderRadius: 8, padding: 13, alignItems: "center" }}>
+                <Pressable onPress={createNote} disabled={scope === "verse" && selectedVerse === null} style={{ borderColor: scope === "verse" && selectedVerse === null ? MUTED : ACCENT, borderWidth: 1, borderRadius: 8, padding: 13, alignItems: "center", opacity: scope === "verse" && selectedVerse === null ? .5 : 1 }}>
                   <Text style={{ color: ACCENT }}>+ Add {scope} note</Text>
                 </Pressable>
                 {scope === "verse" && selectedVerse === null && <Text style={{ color: MUTED, marginTop: 10, fontSize: 12 }}>Tap a verse in the Bible to target it precisely.</Text>}
