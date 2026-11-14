@@ -25,7 +25,8 @@ export default function AppShell() {
 
   const hideChrome =
     location.pathname.startsWith("/listen/") ||
-    location.pathname.startsWith("/read/");
+    location.pathname.startsWith("/read/") ||
+    location.pathname === "/bible";
 
   useEffect(() => {
     applyTheme(themeId);
