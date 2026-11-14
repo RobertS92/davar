@@ -50,3 +50,11 @@ backend/data/
 backend/*.db
 *.db
 
+
+# Secrets (never commit real environment configuration)
+.env
+.env.*
+backend/.env
+backend/.env.*
+!backend/.env.example
+!web/.env.example
