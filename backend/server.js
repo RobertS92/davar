@@ -89,7 +89,7 @@ const SCHEMA_SQL = `
     device_info TEXT
   );
 
-  CREATE TABLE IF NOT EXISTS sessions (
+  CREATE TABLE IF NOT EXISTS study_notes (\n    id TEXT NOT NULL,\n    user_id TEXT NOT NULL,\n    book TEXT NOT NULL,\n    chapter INTEGER,\n    verse INTEGER,\n    scope TEXT NOT NULL,\n    body TEXT NOT NULL,\n    updated_at TEXT NOT NULL,\n    deleted INTEGER DEFAULT 0,\n    PRIMARY KEY (user_id, id),\n    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE\n  );\n  CREATE INDEX IF NOT EXISTS idx_study_notes_user ON study_notes(user_id);\n\n  CREATE TABLE IF NOT EXISTS sessions (
     session_id TEXT PRIMARY KEY,
     user_id TEXT,
     start_time TEXT NOT NULL,
@@ -319,6 +319,48 @@ app.get('/auth/verify', requireDb, authenticateToken, (req, res) => {
       lastLoginAt: user.last_login_at,
     },
   });
+});
+
+// ============ STUDY NOTE SYNC ============
+app.get('/study/notes', requireDb, authenticateToken, (req, res) => {
+  try {
+    const rows = db.prepare('SELECT * FROM study_notes WHERE user_id = ?').all(req.user.userId);
+    res.json({ notes: rows.map((row) => ({
+      id: row.id, book: row.book, chapter: row.chapter, verse: row.verse,
+      scope: row.scope, text: row.body, updatedAt: row.updated_at, deleted: row.deleted === 1,
+    })) });
+  } catch (error) {
+    console.error('Study notes fetch error:', error);
+    res.status(500).json({ message: 'Unable to load study notes' });
+  }
+});
+app.post('/study/notes', requireDb, authenticateToken, (req, res) => {
+  try {
+    const note = req.body?.note;
+    if (!note || typeof note.id !== 'string' || note.id.length > 160
+        || typeof note.book !== 'string' || note.book.length > 100
+        || !['book', 'chapter', 'verse'].includes(note.scope)
+        || typeof note.text !== 'string' || note.text.length > 50000
+        || !note.updatedAt || !Number.isFinite(Date.parse(note.updatedAt))) {
+      return res.status(400).json({ message: 'Invalid study note' });
+    }
+    const chapter = note.scope === 'book' ? null : Number(note.chapter);
+    const verse = note.scope === 'verse' ? Number(note.verse) : null;
+    if ((chapter !== null && (!Number.isInteger(chapter) || chapter < 1 || chapter > 150))
+      || (verse !== null && (!Number.isInteger(verse) || verse < 1 || verse > 200))) {
+      return res.status(400).json({ message: 'Invalid Scripture reference' });
+    }
+    const existing = db.prepare('SELECT updated_at FROM study_notes WHERE user_id = ? AND id = ?').get(req.user.userId, note.id);
+    if (existing && existing.updated_at > note.updatedAt) {
+      return res.status(409).json({ message: 'A newer note already exists' });
+    }
+    db.prepare('INSERT OR REPLACE INTO study_notes (id, user_id, book, chapter, verse, scope, body, updated_at, deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(note.id, req.user.userId, note.book, chapter, verse, note.scope, note.text, note.updatedAt, note.deleted ? 1 : 0);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Study note sync error:', error);
+    res.status(500).json({ message: 'Unable to save study note' });
+  }
 });
 
 // ============ PLAYLIST ENDPOINTS ============
