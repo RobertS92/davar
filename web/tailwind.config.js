@@ -5,16 +5,16 @@ export default {
     extend: {
       colors: {
         ink: {
-          950: "#07070a",
-          900: "#0a0a0a",
-          850: "#111114",
-          800: "#17171c",
-          700: "#1f1f27",
+          950: "var(--ink-950)",
+          900: "var(--ink-900)",
+          850: "var(--ink-850)",
+          800: "var(--ink-800)",
+          700: "var(--ink-700)",
         },
         accent: {
-          DEFAULT: "#6366f1",
-          soft: "#818cf8",
-          deep: "#4f46e5",
+          DEFAULT: "var(--accent)",
+          soft: "var(--accent-soft)",
+          deep: "var(--accent-deep)",
         },
       },
       fontFamily: {

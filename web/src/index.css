@@ -4,7 +4,8 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+html[data-theme="tabernacle"] {
   color-scheme: dark;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -14,9 +15,53 @@
   --panel: #111114;
   --line: rgba(255, 255, 255, 0.08);
   --accent: #6366f1;
+  --accent-soft: #818cf8;
+  --accent-deep: #4f46e5;
+  --ink-950: #07070a;
+  --ink-900: #0a0a0a;
+  --ink-850: #111114;
+  --ink-800: #17171c;
+  --ink-700: #1f1f27;
   --text: #f5f5f7;
   --muted: #9ca3af;
+  --glow: rgba(99, 102, 241, 0.22);
   --tab-bar-h: 64px;
+}
+
+html[data-theme="carpenter"] {
+  color-scheme: light;
+  --app-bg: #f4efe6;
+  --panel: #fffaf2;
+  --line: rgba(68, 48, 28, 0.12);
+  --accent: #9a5b2f;
+  --accent-soft: #c47a45;
+  --accent-deep: #7a4520;
+  --ink-950: #f4efe6;
+  --ink-900: #efe7da;
+  --ink-850: #fffaf2;
+  --ink-800: #e8dfd0;
+  --ink-700: #ddd2bf;
+  --text: #2a2118;
+  --muted: #7a6a58;
+  --glow: rgba(154, 91, 47, 0.18);
+}
+
+html[data-theme="judah"] {
+  color-scheme: dark;
+  --app-bg: #06140f;
+  --panel: #0c1f18;
+  --line: rgba(212, 175, 55, 0.14);
+  --accent: #c9a227;
+  --accent-soft: #e0c35a;
+  --accent-deep: #9a7a12;
+  --ink-950: #06140f;
+  --ink-900: #081a13;
+  --ink-850: #0c1f18;
+  --ink-800: #123026;
+  --ink-700: #184033;
+  --text: #f4efd8;
+  --muted: #9cb3a6;
+  --glow: rgba(201, 162, 39, 0.2);
 }
 
 * {
@@ -39,14 +84,15 @@ body,
 body {
   margin: 0;
   background:
-    radial-gradient(1200px 600px at 50% -10%, rgba(99, 102, 241, 0.22), transparent 55%),
-    radial-gradient(800px 500px at 100% 20%, rgba(14, 165, 233, 0.08), transparent 50%),
+    radial-gradient(1200px 600px at 50% -10%, var(--glow), transparent 55%),
+    radial-gradient(800px 500px at 100% 20%, rgba(14, 165, 233, 0.06), transparent 50%),
     var(--app-bg);
   color: var(--text);
   font-family: "DM Sans", system-ui, sans-serif;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   touch-action: manipulation;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* Installed PWA: solid app chrome, no browser page bounce feel */
@@ -68,54 +114,53 @@ a {
   touch-action: manipulation;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--text) 18%, transparent);
   border-radius: 999px;
 }
 
-.app-shell,
-.app-frame {
-  min-height: 100%;
-  min-height: 100dvh;
+.font-display {
+  font-family: "Fraunces", Georgia, serif;
 }
 
 .safe-top {
-  padding-top: max(0.75rem, var(--safe-top));
+  padding-top: max(0.5rem, var(--safe-top));
 }
 
-.safe-bottom,
-.pb-safe {
-  padding-bottom: max(0.75rem, var(--safe-bottom));
+.safe-bottom {
+  padding-bottom: max(0.5rem, var(--safe-bottom));
 }
 
-/* Space for fixed mobile tab bar + home indicator */
-.pb-tab {
-  padding-bottom: calc(var(--tab-bar-h) + var(--safe-bottom) + 12px);
+.glass {
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--line);
 }
 
 .tab-bar {
   padding-bottom: max(0.35rem, var(--safe-bottom));
-  background: rgba(10, 10, 12, 0.88);
 }
 
 .tab-bar-standalone {
-  background: rgba(10, 10, 12, 0.94);
+  padding-bottom: max(0.75rem, var(--safe-bottom));
 }
 
 .home-indicator {
   height: 0;
-}
-
-@supports (padding: max(0px)) {
-  .home-indicator {
-    height: env(safe-area-inset-bottom, 0px);
-    max-height: 14px;
-  }
 }
 
 .touch-target {
@@ -123,30 +168,11 @@ a {
   min-width: 44px;
 }
 
-.glass {
-  background: rgba(17, 17, 20, 0.82);
-  backdrop-filter: blur(20px) saturate(1.2);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  border: 1px solid var(--line);
-}
-
-.gradient-action {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-}
-
-.gradient-manual {
-  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
-}
-
-.screen-scroll {
-  -webkit-overflow-scrolling: touch;
-}
-
 .page-enter {
-  animation: page-in 0.28s ease both;
+  animation: page-enter 220ms ease-out;
 }
 
-@keyframes page-in {
+@keyframes page-enter {
   from {
     opacity: 0;
     transform: translateY(6px);
@@ -155,21 +181,6 @@ a {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-@keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-up {
-  animation: fade-up 0.45s ease both;
 }
 
 @keyframes pulse-soft {
@@ -183,16 +194,75 @@ a {
 }
 
 .animate-pulse-soft {
-  animation: pulse-soft 1.6s ease-in-out infinite;
+  animation: pulse-soft 1.4s ease-in-out infinite;
 }
 
-/* Desktop framed app look */
+.app-frame {
+  min-height: 100dvh;
+}
+
+.app-shell,
+.app-frame {
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+.pb-safe {
+  padding-bottom: max(0.75rem, var(--safe-bottom));
+}
+
+.pb-tab {
+  padding-bottom: calc(var(--tab-bar-h) + var(--safe-bottom) + 12px);
+}
+
+.tab-bar {
+  background: color-mix(in srgb, var(--ink-900) 88%, transparent);
+}
+
+.tab-bar-standalone {
+  background: color-mix(in srgb, var(--ink-900) 94%, transparent);
+}
+
+@supports (padding: max(0px)) {
+  .home-indicator {
+    height: env(safe-area-inset-bottom, 0px);
+    max-height: 14px;
+  }
+}
+
+.gradient-action {
+  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+}
+
+.gradient-manual {
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+}
+
+.screen-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s ease both;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (min-width: 1024px) {
   body:not(.is-standalone) {
     background:
-      radial-gradient(900px 500px at 20% 0%, rgba(99, 102, 241, 0.18), transparent 50%),
+      radial-gradient(900px 500px at 20% 0%, var(--glow), transparent 50%),
       radial-gradient(700px 400px at 90% 30%, rgba(14, 165, 233, 0.08), transparent 45%),
-      #050508;
+      color-mix(in srgb, var(--app-bg) 85%, black);
   }
 
   .pb-tab {

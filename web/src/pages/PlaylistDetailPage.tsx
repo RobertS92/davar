@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, Download, Headphones, Heart, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Download, Headphones, Heart, Pencil, Share2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { AppModal } from "@/components/AppModal";
 import { formatDuration } from "@/lib/cn";
@@ -70,6 +70,13 @@ export default function PlaylistDetailPage() {
         </button>
         <div className="flex gap-2">
           <button
+            onClick={() => navigate(`/share/${playlist.id}`)}
+            className="rounded-full bg-white/5 p-2 text-white"
+            aria-label="Share"
+          >
+            <Share2 className="h-5 w-5" />
+          </button>
+          <button
             onClick={() => navigate(`/playlist/${playlist.id}/edit`)}
             className="rounded-full bg-white/5 p-2 text-white"
             aria-label="Edit"
@@ -97,7 +104,7 @@ export default function PlaylistDetailPage() {
 
       <div className="px-5 lg:mx-auto lg:w-full lg:max-w-3xl">
         <p className="text-sm uppercase tracking-[0.18em] text-accent-soft">Playlist</p>
-        <h1 className="mt-2 font-display text-3xl font-semibold text-white">{playlist.title}</h1>
+        <h1 className="mt-2 font-display text-3xl font-semibold text-white lg:text-4xl">{playlist.title}</h1>
         <p className="mt-2 text-neutral-400">
           {playlist.items.length} passages · {formatDuration(playlist.totalDuration)} ·{" "}
           {playlist.translation}
@@ -107,7 +114,7 @@ export default function PlaylistDetailPage() {
           <p className="mt-3 text-sm leading-relaxed text-neutral-300">{playlist.description}</p>
         )}
 
-        <div className="mt-6 grid grid-cols-2 gap-3">
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:max-w-md">
           <button
             onClick={() => open("listen")}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-accent px-4 py-3.5 font-semibold text-white"
@@ -126,7 +133,7 @@ export default function PlaylistDetailPage() {
 
         <button
           onClick={() => open(defaultMode)}
-          className="mt-3 w-full rounded-2xl border border-white/10 py-3 text-sm text-neutral-300"
+          className="mt-3 w-full rounded-2xl border border-white/10 py-3 text-sm text-neutral-300 lg:max-w-md"
         >
           Open with your default mode ({defaultMode})
         </button>
@@ -134,7 +141,7 @@ export default function PlaylistDetailPage() {
         <button
           onClick={() => void handleDownload()}
           disabled={!!downloadProgress}
-          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 py-3 text-sm text-neutral-200 disabled:opacity-60"
+          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 py-3 text-sm text-neutral-200 disabled:opacity-60 lg:max-w-md"
         >
           <Download className="h-4 w-4" />
           {downloadProgress
@@ -146,20 +153,22 @@ export default function PlaylistDetailPage() {
 
         <div className="mt-8 space-y-3">
           <h2 className="text-lg font-semibold text-white">Passages</h2>
-          {playlist.items.map((item, index) => (
-            <div key={item.id} className="rounded-2xl border border-white/5 bg-ink-850/80 p-4">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="font-medium text-white">
-                  {index + 1}. {item.title}
-                </p>
-                <span className="text-xs text-neutral-500">
-                  {formatDuration(item.estimatedDuration)}
-                  {item.isDownloaded ? " · saved" : ""}
-                </span>
+          <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+            {playlist.items.map((item, index) => (
+              <div key={item.id} className="rounded-2xl border border-white/5 bg-ink-850/80 p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="font-medium text-white">
+                    {index + 1}. {item.title}
+                  </p>
+                  <span className="text-xs text-neutral-500">
+                    {formatDuration(item.estimatedDuration)}
+                    {item.isDownloaded ? " · saved" : ""}
+                  </span>
+                </div>
+                <p className="line-clamp-3 text-sm leading-relaxed text-neutral-400">{item.text}</p>
               </div>
-              <p className="line-clamp-3 text-sm leading-relaxed text-neutral-400">{item.text}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 

@@ -10,6 +10,7 @@ import { isNivAvailable } from "@/lib/api";
 import { analytics } from "@/services/analyticsService";
 import { AppModal } from "@/components/AppModal";
 import { Screen, ScreenHeader } from "@/components/Screen";
+import { THEMES } from "@/theme/themes";
 
 export default function SettingsPage() {
   const prefs = usePreferencesStore();
@@ -88,6 +89,25 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+        </section>
+
+        <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4">
+          <h2 className="mb-3 font-semibold text-white">Theme</h2>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {THEMES.map((theme) => (
+              <button
+                key={theme.id}
+                onClick={() => prefs.setThemeId(theme.id)}
+                className={cn(
+                  "rounded-2xl px-3 py-3 text-left",
+                  prefs.themeId === theme.id ? "bg-accent/20 ring-1 ring-accent" : "bg-white/5"
+                )}
+              >
+                <p className="text-sm font-medium text-white">{theme.name}</p>
+                <p className="mt-1 text-xs text-neutral-400">{theme.description}</p>
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4">
@@ -252,7 +272,34 @@ export default function SettingsPage() {
               value={prefs.announceBookChapter}
               onChange={prefs.setAnnounceBookChapter}
             />
+            <Toggle
+              label="Speak verse numbers"
+              value={prefs.speakVerseNumbers}
+              onChange={prefs.setSpeakVerseNumbers}
+            />
           </div>
+        </section>
+
+        <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4">
+          <h2 className="mb-3 font-semibold text-white">Activity</h2>
+          <Link
+            to="/analytics"
+            className="block rounded-xl bg-white/5 px-3 py-3 text-sm text-neutral-200 hover:bg-white/10"
+          >
+            View local analytics
+          </Link>
+          <Link
+            to="/community"
+            className="mt-2 block rounded-xl bg-white/5 px-3 py-3 text-sm text-neutral-200 hover:bg-white/10"
+          >
+            Browse community playlists
+          </Link>
+          <Link
+            to="/share"
+            className="mt-2 block rounded-xl bg-white/5 px-3 py-3 text-sm text-neutral-200 hover:bg-white/10"
+          >
+            Import a share code
+          </Link>
         </section>
 
         <section className="rounded-3xl border border-white/5 bg-ink-850/70 p-4 text-sm text-neutral-400">

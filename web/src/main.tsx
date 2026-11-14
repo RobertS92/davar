@@ -5,10 +5,13 @@ import App from "./App";
 import { analytics } from "@/services/analyticsService";
 import { useAuthStore } from "@/stores/authStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
+import { applyTheme } from "@/theme/themes";
 import "./index.css";
 
 function Root() {
   useEffect(() => {
+    applyTheme(usePreferencesStore.getState().themeId);
     analytics.initialize();
     void (async () => {
       await useAuthStore.getState().initialize();

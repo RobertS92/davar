@@ -40,11 +40,13 @@ export function Screen({
 export function ScreenHeader({
   title,
   subtitle,
+  left,
   right,
   className,
 }: {
   title: string;
   subtitle?: string;
+  left?: ReactNode;
   right?: ReactNode;
   className?: string;
 }) {
@@ -55,11 +57,14 @@ export function ScreenHeader({
         className
       )}
     >
-      <div className="min-w-0">
-        <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-tight text-white">
-          {title}
-        </h1>
-        {subtitle ? <p className="mt-0.5 text-sm text-neutral-400">{subtitle}</p> : null}
+      <div className="flex min-w-0 items-start gap-3">
+        {left ? <div className="shrink-0 pt-1">{left}</div> : null}
+        <div className="min-w-0">
+          <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-tight text-white">
+            {title}
+          </h1>
+          {subtitle ? <p className="mt-0.5 text-sm text-neutral-400">{subtitle}</p> : null}
+        </div>
       </div>
       {right ? <div className="shrink-0 pt-1">{right}</div> : null}
     </header>
