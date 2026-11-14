@@ -18,6 +18,7 @@ import EditPlaylistPage from "@/pages/EditPlaylistPage";
 import DeepDivePage from "@/pages/DeepDivePage";
 import ListenPage from "@/pages/ListenPage";
 import ReadPage from "@/pages/ReadPage";
+import BookReaderPage from "@/pages/BookReaderPage";
 import SharePlaylistPage from "@/pages/SharePlaylistPage";
 import CommunityPage from "@/pages/CommunityPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="/share" element={<SharePlaylistPage />} />
         <Route path="/share/:id" element={<SharePlaylistPage />} />
         <Route path="/deep-dive" element={<DeepDivePage />} />
+        <Route path="/bible" element={<BookReaderPage />} />
         <Route path="/create/manual" element={<CreateManualPage />} />
         <Route path="/create/prompt" element={<CreatePromptPage />} />
         <Route path="/playlist/:id" element={<PlaylistDetailPage />} />
