@@ -96,6 +96,17 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Scripture book reader */}
+        <Pressable onPress={() => navigation.navigate("BookReader")} className="mx-5 mb-6 rounded-2xl bg-neutral-900 border border-amber-900/40 p-5 flex-row items-center active:opacity-80">
+          <View className="w-14 h-14 rounded-xl bg-amber-500/15 items-center justify-center mr-4">
+            <Ionicons name="book-outline" color="#c6a978" size={29} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-white text-lg font-semibold">Read the Bible</Text>
+            <Text className="text-neutral-400 text-sm mt-1">Chapter by chapter with verse and chapter notes</Text>
+          </View>
+          <Ionicons name="chevron-forward" color="#c6a978" size={22} />
+        </Pressable>
         {/* Quick Actions */}
         <View className="px-5 mb-6">
           <Text className="text-white text-lg font-semibold mb-3">
