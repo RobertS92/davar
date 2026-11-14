@@ -12,6 +12,7 @@ import PromptPlaylistScreen from "../screens/PromptPlaylistScreen";
 import PlaylistDetailScreen from "../screens/PlaylistDetailScreen";
 import ListenModeScreen from "../screens/ListenModeScreen";
 import ReadModeScreen from "../screens/ReadModeScreen";
+import BookReaderScreen from "../screens/BookReaderScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import OnboardingScreen from "../screens/OnboardingScreen";
 import ModesScreen from "../screens/ModesScreen";
@@ -38,6 +39,7 @@ export type RootStackParamList = {
   Modes: undefined;
   EditPlaylist: { playlistId: string };
   DeepDiveStudy: undefined;
+  BookReader: undefined;
 };
 
 export type TabParamList = {
@@ -137,6 +139,7 @@ export default function RootNavigator() {
         options={{ presentation: "modal" }}
       />
       <Stack.Screen name="PlaylistDetail" component={PlaylistDetailScreen} />
+      <Stack.Screen name="BookReader" component={BookReaderScreen} />
       <Stack.Screen
         name="ListenMode"
         component={ListenModeScreen}
