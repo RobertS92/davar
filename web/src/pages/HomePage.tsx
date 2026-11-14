@@ -25,6 +25,9 @@ export default function HomePage() {
       <InstallBanner />
 
       <div className="space-y-8 px-5 pb-4 pt-4">
+        <Link to="/bible" className="flex items-center gap-4 rounded-3xl border border-amber-500/25 bg-amber-500/10 p-5 text-white hover:bg-amber-500/15">
+          <BookOpen className="h-9 w-9 shrink-0 text-amber-300"/><div><p className="font-display text-xl font-semibold">Open the Bible</p><p className="text-sm text-neutral-300">Read full chapters and write notes alongside Scripture.</p></div>
+        </Link>
         <section>
           <h2 className="mb-3 text-lg font-semibold text-white">Create Playlist</h2>
           <div className="grid grid-cols-2 gap-3">

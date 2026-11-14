@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
+import { useStudyStore } from "@/stores/studyStore";
 import { isBackendConfigured } from "@/lib/api";
 import { analytics } from "@/services/analyticsService";
 import { AppModal } from "@/components/AppModal";
@@ -22,6 +23,7 @@ export default function SignUpPage() {
   const finish = async () => {
     analytics.setUserId(useAuthStore.getState().user?.id ?? null);
     await usePlaylistStore.getState().hydrateFromBackend();
+    await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);
     navigate("/", { replace: true });
   };
 
@@ -68,7 +70,7 @@ export default function SignUpPage() {
             <BookOpen className="h-8 w-8 text-white" />
           </div>
           <h1 className="font-display text-3xl font-semibold text-white">Create account</h1>
-          <p className="mt-2 text-neutral-300">Save and sync playlists across your devices</p>
+          <p className="mt-2 text-neutral-300">Save and sync your Bible study notes and playlists</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
+import { useStudyStore } from "@/stores/studyStore";
 import { isBackendConfigured } from "@/lib/api";
 import { analytics } from "@/services/analyticsService";
 import { AppModal } from "@/components/AppModal";
@@ -21,6 +22,7 @@ export default function SignInPage() {
   const finish = async () => {
     analytics.setUserId(useAuthStore.getState().user?.id ?? null);
     await usePlaylistStore.getState().hydrateFromBackend();
+    await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);
     navigate("/", { replace: true });
   };
 

@@ -47,6 +47,10 @@ export default function ModesPage() {
       <ScreenHeader title="Modes" subtitle="Curated listening and reading moods" />
 
       <div className="mb-5 px-5 pt-4">
+        <Link to="/bible" className="mb-4 flex items-center gap-4 rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-white hover:bg-amber-500/15">
+          <BookOpen className="h-9 w-9 shrink-0 text-amber-300"/>
+          <div><p className="font-display text-2xl font-semibold">Read the Bible</p><p className="mt-1 text-sm text-neutral-300">Read chapter by chapter, with your personal verse and chapter study notebook.</p></div>
+        </Link>
         <Link
           to="/deep-dive"
           className="flex items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-800 p-5 text-white active:scale-[0.99]"

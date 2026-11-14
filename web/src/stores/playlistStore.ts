@@ -11,6 +11,7 @@ import { getAccessToken, isBackendConfigured } from "@/lib/api";
 
 interface PlaylistState {
   playlists: Playlist[];
+  ownerId: string | null;
   recentPlaylistIds: string[];
   currentPlaylistId: string | null;
   currentItemIndex: number;
@@ -28,6 +29,7 @@ interface PlaylistState {
   addToRecent: (id: string) => void;
   hydrateFromBackend: () => Promise<void>;
   setSyncStatus: (status: PlaylistState["syncStatus"]) => void;
+  clearForSignOut: () => void;
 }
 
 function canSync(): boolean {
@@ -43,6 +45,7 @@ export const usePlaylistStore = create<PlaylistState>()(
   persist(
     (set, get) => ({
       playlists: [],
+      ownerId: null,
       recentPlaylistIds: [],
       currentPlaylistId: null,
       currentItemIndex: 0,
@@ -50,6 +53,7 @@ export const usePlaylistStore = create<PlaylistState>()(
       syncStatus: "idle",
 
       setSyncStatus: (syncStatus) => set({ syncStatus }),
+      clearForSignOut: () => set({ playlists: [], recentPlaylistIds: [], ownerId: null, syncStatus: "idle" }),
 
       addPlaylist: (playlist) => {
         set((state) => ({ playlists: [playlist, ...state.playlists] }));
@@ -126,7 +130,9 @@ export const usePlaylistStore = create<PlaylistState>()(
           set({ syncStatus: isBackendConfigured() ? "idle" : "offline" });
           return;
         }
-        set({ syncStatus: "syncing" });
+        const userId = (() => { try { const token = getAccessToken(); if (!token) return null; const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); return String(payload.userId ?? ""); } catch { return null; } })();
+        if (get().ownerId && get().ownerId !== userId) set({ playlists: [], recentPlaylistIds: [] });
+        set({ ownerId: userId, syncStatus: "syncing" });
         try {
           const remote = await fetchPlaylistsFromBackend();
           const merged = mergePlaylists(get().playlists, remote);
@@ -145,6 +151,7 @@ export const usePlaylistStore = create<PlaylistState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         playlists: state.playlists,
+        ownerId: state.ownerId,
         recentPlaylistIds: state.recentPlaylistIds,
       }),
     }
