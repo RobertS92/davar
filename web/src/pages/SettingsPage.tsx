@@ -5,6 +5,7 @@ import { VOICE_OPTIONS } from "@/services/ttsService";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { isSignedInUser, useAuthStore } from "@/stores/authStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
+import { useStudyStore } from "@/stores/studyStore";
 import { cn } from "@/lib/cn";
 import { isNivAvailable } from "@/lib/api";
 import { analytics } from "@/services/analyticsService";
@@ -32,6 +33,8 @@ export default function SettingsPage() {
     setSigningOut(true);
     try {
       await signOut();
+      useStudyStore.getState().clearForSignOut();
+      usePlaylistStore.getState().clearForSignOut();
       analytics.track("auth_sign_out");
       analytics.setUserId(null);
       await hydrateFromBackend();
@@ -56,8 +59,9 @@ export default function SettingsPage() {
                 Signed in as <span className="text-white">{user?.email}</span>
               </p>
               <p className="text-xs text-neutral-500">
-                Cloud sync: {syncStatus === "synced" ? "up to date" : syncStatus}
+                Playlist sync: {syncStatus === "synced" ? "up to date" : syncStatus}
               </p>
+              <p className="text-xs text-neutral-500">Study notes: {useStudyStore.getState().syncStatus}</p>
               <button
                 onClick={() => void handleSignOut()}
                 disabled={signingOut}
