@@ -3,6 +3,7 @@ import { Car, Heart, Moon, BookOpen, Sparkles, PenLine } from "lucide-react";
 import { InstallBanner } from "@/components/InstallBanner";
 import { PlaylistCard } from "@/components/PlaylistCard";
 import { Screen, ScreenHeader } from "@/components/Screen";
+import { isSignedInUser, useAuthStore } from "@/stores/authStore";
 import { getFavorites, getRecentPlaylists, usePlaylistStore } from "@/stores/playlistStore";
 
 const modes = [
@@ -17,6 +18,7 @@ export default function HomePage() {
   const recentIds = usePlaylistStore((s) => s.recentPlaylistIds);
   const recent = getRecentPlaylists(playlists, recentIds);
   const favorites = getFavorites(playlists);
+  const signedIn = isSignedInUser(useAuthStore((s) => s.user));
 
   return (
     <Screen>
@@ -25,6 +27,20 @@ export default function HomePage() {
       <InstallBanner />
 
       <div className="space-y-8 px-5 pb-4 pt-4">
+        {!signedIn && (
+          <Link
+            to="/sign-up"
+            className="flex items-center gap-4 rounded-3xl border border-accent/30 bg-accent/10 p-5 text-white active:opacity-90"
+          >
+            <Sparkles className="h-8 w-8 shrink-0 text-accent-soft" />
+            <div>
+              <p className="font-display text-xl font-semibold">Save your playlists</p>
+              <p className="text-sm text-neutral-300">
+                Create a free account so playlists stay with you on every phone.
+              </p>
+            </div>
+          </Link>
+        )}
         <Link to="/bible" className="flex items-center gap-4 rounded-3xl border border-amber-500/25 bg-amber-500/10 p-5 text-white hover:bg-amber-500/15">
           <BookOpen className="h-9 w-9 shrink-0 text-amber-300"/><div><p className="font-display text-xl font-semibold">Open the Bible</p><p className="text-sm text-neutral-300">Read full chapters and write notes alongside Scripture.</p></div>
         </Link>

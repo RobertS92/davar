@@ -1,7 +1,7 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
-import { useAuthStore } from "@/stores/authStore";
+import { isSignedInUser, useAuthStore } from "@/stores/authStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { useStudyStore } from "@/stores/studyStore";
 import { isBackendConfigured } from "@/lib/api";
@@ -12,6 +12,7 @@ export default function SignUpPage() {
   const navigate = useNavigate();
   const signUp = useAuthStore((s) => s.signUp);
   const skipAuth = useAuthStore((s) => s.skipAuth);
+  const user = useAuthStore((s) => s.user);
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,6 +27,13 @@ export default function SignUpPage() {
     await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);
     navigate("/", { replace: true });
   };
+
+  useEffect(() => {
+    if (isSignedInUser(user)) {
+      void finish();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when already signed in on entry
+  }, [user]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -70,7 +78,9 @@ export default function SignUpPage() {
             <BookOpen className="h-8 w-8 text-white" />
           </div>
           <h1 className="font-display text-3xl font-semibold text-white">Create account</h1>
-          <p className="mt-2 text-neutral-300">Save and sync your Bible study notes and playlists</p>
+          <p className="mt-2 text-neutral-300">
+            Free account — save playlists and study notes, then open them on any phone
+          </p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">

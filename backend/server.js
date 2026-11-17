@@ -75,6 +75,8 @@ const SCHEMA_SQL = `
     tags TEXT NOT NULL,
     is_favorite INTEGER DEFAULT 0,
     last_played_at TEXT,
+    last_played_item_id TEXT,
+    last_played_position REAL DEFAULT 0,
     completed_count INTEGER DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
   );
@@ -206,13 +208,27 @@ const generateTokens = (userId) => {
 
 // ============ AUTH ENDPOINTS ============
 
+function normalizeEmail(raw) {
+  return String(raw || '')
+    .trim()
+    .toLowerCase();
+}
+
 // Sign Up
 app.post('/auth/signup', requireDb, async (req, res) => {
   try {
-    const { email, password, displayName } = req.body;
+    const email = normalizeEmail(req.body?.email);
+    const password = req.body?.password;
+    const displayName = typeof req.body?.displayName === 'string' ? req.body.displayName.trim().slice(0, 80) : '';
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password required' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Enter a valid email address' });
+    }
+    if (String(password).length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
     // Check if user exists
@@ -254,7 +270,8 @@ app.post('/auth/signup', requireDb, async (req, res) => {
 // Sign In
 app.post('/auth/signin', requireDb, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = normalizeEmail(req.body?.email);
+    const password = req.body?.password;
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password required' });
@@ -386,6 +403,8 @@ app.get('/playlists', requireDb, authenticateToken, (req, res) => {
       isFavorite: p.is_favorite === 1,
       isDownloaded: false,
       lastPlayedAt: p.last_played_at,
+      lastPlayedItemId: p.last_played_item_id || undefined,
+      lastPlayedPosition: typeof p.last_played_position === 'number' ? p.last_played_position : 0,
       completedCount: p.completed_count,
     }));
 
@@ -400,10 +419,19 @@ app.get('/playlists', requireDb, authenticateToken, (req, res) => {
 app.post('/playlists/sync', requireDb, authenticateToken, (req, res) => {
   try {
     const { playlist } = req.body;
+    if (!playlist || typeof playlist.id !== 'string' || !playlist.title) {
+      return res.status(400).json({ message: 'Invalid playlist payload' });
+    }
 
     // Check if playlist exists
     const existing = db.prepare('SELECT id FROM playlists WHERE id = ? AND user_id = ?')
       .get(playlist.id, req.user.userId);
+
+    const lastPlayedItemId =
+      typeof playlist.lastPlayedItemId === 'string' ? playlist.lastPlayedItemId.slice(0, 160) : null;
+    const lastPlayedPosition = Number.isFinite(Number(playlist.lastPlayedPosition))
+      ? Number(playlist.lastPlayedPosition)
+      : 0;
 
     if (existing) {
       // Update
@@ -411,20 +439,22 @@ app.post('/playlists/sync', requireDb, authenticateToken, (req, res) => {
         UPDATE playlists SET
           title = ?, description = ?, items = ?, translation = ?, total_duration = ?,
           updated_at = ?, source_type = ?, prompt_used = ?, tags = ?, is_favorite = ?,
-          last_played_at = ?, completed_count = ?
+          last_played_at = ?, last_played_item_id = ?, last_played_position = ?, completed_count = ?
         WHERE id = ? AND user_id = ?
       `).run(
         playlist.title,
         playlist.description || null,
-        JSON.stringify(playlist.items),
+        JSON.stringify(playlist.items || []),
         playlist.translation,
-        playlist.totalDuration,
-        playlist.updatedAt,
-        playlist.sourceType,
+        playlist.totalDuration || 0,
+        playlist.updatedAt || new Date().toISOString(),
+        playlist.sourceType || 'manual',
         playlist.promptUsed || null,
-        JSON.stringify(playlist.tags),
+        JSON.stringify(playlist.tags || []),
         playlist.isFavorite ? 1 : 0,
         playlist.lastPlayedAt || null,
+        lastPlayedItemId,
+        lastPlayedPosition,
         playlist.completedCount || 0,
         playlist.id,
         req.user.userId
@@ -435,23 +465,25 @@ app.post('/playlists/sync', requireDb, authenticateToken, (req, res) => {
         INSERT INTO playlists (
           id, user_id, title, description, items, translation, total_duration,
           created_at, updated_at, source_type, prompt_used, tags, is_favorite,
-          last_played_at, completed_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          last_played_at, last_played_item_id, last_played_position, completed_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         playlist.id,
         req.user.userId,
         playlist.title,
         playlist.description || null,
-        JSON.stringify(playlist.items),
-        playlist.translation,
-        playlist.totalDuration,
-        playlist.createdAt,
-        playlist.updatedAt,
-        playlist.sourceType,
+        JSON.stringify(playlist.items || []),
+        playlist.translation || 'KJV',
+        playlist.totalDuration || 0,
+        playlist.createdAt || new Date().toISOString(),
+        playlist.updatedAt || new Date().toISOString(),
+        playlist.sourceType || 'manual',
         playlist.promptUsed || null,
-        JSON.stringify(playlist.tags),
+        JSON.stringify(playlist.tags || []),
         playlist.isFavorite ? 1 : 0,
         playlist.lastPlayedAt || null,
+        lastPlayedItemId,
+        lastPlayedPosition,
         playlist.completedCount || 0
       );
     }
@@ -944,6 +976,14 @@ async function start() {
   try {
     db = await openDatabase(dbPath);
     db.exec(SCHEMA_SQL);
+    // Additive migrations for existing Railway volumes
+    const playlistCols = db.prepare('PRAGMA table_info(playlists)').all().map((c) => c.name);
+    if (!playlistCols.includes('last_played_item_id')) {
+      db.exec('ALTER TABLE playlists ADD COLUMN last_played_item_id TEXT');
+    }
+    if (!playlistCols.includes('last_played_position')) {
+      db.exec('ALTER TABLE playlists ADD COLUMN last_played_position REAL DEFAULT 0');
+    }
     console.log(`Database ready: ${db.path}`);
   } catch (err) {
     console.error('Database failed to open:', err);

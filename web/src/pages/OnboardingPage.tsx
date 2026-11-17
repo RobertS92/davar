@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen, ChevronRight, Headphones } from "lucide-react";
 import type { ConsumptionMode, PlaybackSpeed, Translation } from "@/types/bible";
 import { usePreferencesStore } from "@/stores/preferencesStore";
+import { isSignedInUser, useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/cn";
 import { isNivAvailable } from "@/lib/api";
 
@@ -24,6 +25,11 @@ export default function OnboardingPage() {
 
   const complete = () => {
     setHasCompletedOnboarding(true);
+    // Keep an existing session — do not bounce signed-in users back to sign-in
+    if (isSignedInUser(useAuthStore.getState().user)) {
+      navigate("/", { replace: true });
+      return;
+    }
     navigate("/sign-in", { replace: true });
   };
 
@@ -66,7 +72,7 @@ export default function OnboardingPage() {
             <div className="mt-8 space-y-3 rounded-2xl bg-ink-850/80 p-5">
               {[
                 "AI-powered playlists and Deep Dive studies",
-                "Stations for faith, family, work, and more",
+                "Create a free account to save playlists across phones",
                 "OpenAI voices in Listen Mode, or Read Mode anywhere",
               ].map((item) => (
                 <p key={item} className="text-sm text-neutral-200">
