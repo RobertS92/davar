@@ -2,6 +2,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, BookOpen, Download, Headphones, Heart, Pencil, Share2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { AppModal } from "@/components/AppModal";
+import { Screen } from "@/components/Screen";
 import { formatDuration } from "@/lib/cn";
 import { getPlaylistById, usePlaylistStore } from "@/stores/playlistStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
@@ -29,12 +30,14 @@ export default function PlaylistDetailPage() {
 
   if (!playlist) {
     return (
-      <div className="safe-top flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <p className="font-display text-2xl text-white">Playlist not found</p>
-        <Link to="/library" className="mt-4 text-accent-soft">
-          Back to Library
-        </Link>
-      </div>
+      <Screen>
+        <div className="safe-top flex flex-1 flex-col items-center justify-center px-6 text-center">
+          <p className="font-display text-2xl text-white">Playlist not found</p>
+          <Link to="/library" className="mt-4 text-accent-soft">
+            Back to Library
+          </Link>
+        </div>
+      </Screen>
     );
   }
 
@@ -63,7 +66,8 @@ export default function PlaylistDetailPage() {
   };
 
   return (
-    <div className="safe-top flex flex-1 flex-col pb-8">
+    <Screen>
+      <div className="safe-top flex flex-col">
       <header className="flex items-center justify-between gap-3 px-5 pb-4 pt-2">
         <button onClick={() => navigate(-1)} className="rounded-full bg-white/5 p-2 text-white">
           <ArrowLeft className="h-5 w-5" />
@@ -184,6 +188,7 @@ export default function PlaylistDetailPage() {
         }}
       />
       <AppModal open={!!error} title="Download" message={error || ""} onClose={() => setError(null)} />
-    </div>
+      </div>
+    </Screen>
   );
 }

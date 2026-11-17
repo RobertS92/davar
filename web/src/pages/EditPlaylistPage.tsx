@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import type { PlaylistItem } from "@/types/bible";
 import { AppModal } from "@/components/AppModal";
+import { Screen } from "@/components/Screen";
 import { parseReferences } from "@/services/bibleParser";
 import { compilePlaylist } from "@/services/playlistCompiler";
 import { getPlaylistById, usePlaylistStore } from "@/stores/playlistStore";
@@ -25,14 +26,16 @@ export default function EditPlaylistPage() {
 
   if (!playlist) {
     return (
-      <div className="safe-top flex flex-1 items-center justify-center px-6 text-center">
-        <div>
-          <p className="font-display text-2xl">Playlist not found</p>
-          <Link to="/library" className="mt-3 inline-block text-accent-soft">
-            Back to Library
-          </Link>
+      <Screen>
+        <div className="safe-top flex flex-1 items-center justify-center px-6 text-center">
+          <div>
+            <p className="font-display text-2xl">Playlist not found</p>
+            <Link to="/library" className="mt-3 inline-block text-accent-soft">
+              Back to Library
+            </Link>
+          </div>
         </div>
-      </div>
+      </Screen>
     );
   }
 
@@ -78,7 +81,8 @@ export default function EditPlaylistPage() {
   };
 
   return (
-    <div className="safe-top flex flex-1 flex-col pb-8">
+    <Screen>
+      <div className="safe-top flex flex-col">
       <header className="flex items-center justify-between gap-3 border-b border-white/5 px-5 pb-4 pt-2">
         <button onClick={() => navigate(-1)} className="text-neutral-400">
           Cancel
@@ -164,6 +168,7 @@ export default function EditPlaylistPage() {
       </div>
 
       <AppModal open={!!error} title="Edit playlist" message={error || ""} onClose={() => setError(null)} />
-    </div>
+      </div>
+    </Screen>
   );
 }
