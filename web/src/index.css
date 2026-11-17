@@ -25,7 +25,8 @@ html[data-theme="tabernacle"] {
   --text: #f5f5f7;
   --muted: #9ca3af;
   --glow: rgba(99, 102, 241, 0.22);
-  --tab-bar-h: 64px;
+  /* Matches mobile tab bar + label row; used by .pb-tab clearance */
+  --tab-bar-h: 80px;
 }
 
 html[data-theme="carpenter"] {

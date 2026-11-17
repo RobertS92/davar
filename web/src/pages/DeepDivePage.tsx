@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type { Translation } from "@/types/bible";
 import { AppModal } from "@/components/AppModal";
+import { Screen } from "@/components/Screen";
 import { parseReferences } from "@/services/bibleParser";
 import { compilePlaylist } from "@/services/playlistCompiler";
 import {
@@ -138,7 +139,8 @@ export default function DeepDivePage() {
   };
 
   return (
-    <div className="safe-top flex flex-1 flex-col pb-8">
+    <Screen>
+      <div className="safe-top flex flex-col">
       <header className="flex items-center gap-3 px-5 pb-4 pt-2">
         <button
           onClick={() => {
@@ -304,6 +306,7 @@ export default function DeepDivePage() {
       )}
 
       <AppModal open={!!error} title="Deep Dive" message={error || ""} onClose={() => setError(null)} />
-    </div>
+      </div>
+    </Screen>
   );
 }
