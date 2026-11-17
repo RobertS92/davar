@@ -74,21 +74,21 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <p className="text-sm text-neutral-300">
                 {user?.isAnonymous
-                  ? "Using a guest session. Sign in to sync playlists across devices."
-                  : "Sign in to sync playlists across devices."}
+                  ? "You are browsing as a guest. Create a free account to save playlists in the cloud."
+                  : "Create a free account to save playlists and study notes across phones."}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Link
-                  to="/sign-in"
+                  to="/sign-up"
                   className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white"
                 >
-                  Sign in
+                  Create account
                 </Link>
                 <Link
-                  to="/sign-up"
+                  to="/sign-in"
                   className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-neutral-200"
                 >
-                  Create account
+                  Sign in
                 </Link>
               </div>
             </div>

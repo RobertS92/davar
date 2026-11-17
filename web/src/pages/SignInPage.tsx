@@ -1,7 +1,7 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
-import { useAuthStore } from "@/stores/authStore";
+import { isSignedInUser, useAuthStore } from "@/stores/authStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { useStudyStore } from "@/stores/studyStore";
 import { isBackendConfigured } from "@/lib/api";
@@ -12,6 +12,7 @@ export default function SignInPage() {
   const navigate = useNavigate();
   const signIn = useAuthStore((s) => s.signIn);
   const skipAuth = useAuthStore((s) => s.skipAuth);
+  const user = useAuthStore((s) => s.user);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +26,13 @@ export default function SignInPage() {
     await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);
     navigate("/", { replace: true });
   };
+
+  useEffect(() => {
+    if (isSignedInUser(user)) {
+      void finish();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when already signed in on entry
+  }, [user]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -65,7 +73,9 @@ export default function SignInPage() {
             <BookOpen className="h-8 w-8 text-white" />
           </div>
           <h1 className="font-display text-3xl font-semibold text-white">Welcome back</h1>
-          <p className="mt-2 text-neutral-300">Sign in to sync your playlists across devices</p>
+          <p className="mt-2 text-neutral-300">
+            Sign in to save playlists, study notes, and pick up on any phone
+          </p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
