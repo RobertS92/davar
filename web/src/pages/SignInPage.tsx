@@ -22,8 +22,12 @@ export default function SignInPage() {
 
   const finish = async () => {
     analytics.setUserId(useAuthStore.getState().user?.id ?? null);
-    await usePlaylistStore.getState().hydrateFromBackend();
-    await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);
+    try {
+      await usePlaylistStore.getState().hydrateFromBackend();
+      await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);
+    } catch {
+      // Auth already succeeded — do not block entry if library sync is offline.
+    }
     navigate("/", { replace: true });
   };
 
