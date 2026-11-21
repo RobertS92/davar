@@ -24,14 +24,12 @@ export async function deletePlaylistFromBackend(id: string): Promise<boolean> {
 }
 
 export async function fetchPlaylistsFromBackend(): Promise<Playlist[]> {
-  if (!isBackendConfigured() || !getAccessToken()) return [];
-  try {
-    const data = await apiFetch<{ playlists: Playlist[] }>("/playlists", { auth: true });
-    return data.playlists || [];
-  } catch (error) {
-    console.warn("Playlist fetch failed:", error instanceof Error ? error.message : error);
-    return [];
+  if (!isBackendConfigured() || !getAccessToken()) {
+    throw new Error("Playlist sync unavailable");
   }
+  // Let errors propagate — callers must not treat a failed GET as an empty library.
+  const data = await apiFetch<{ playlists: Playlist[] }>("/playlists", { auth: true });
+  return data.playlists || [];
 }
 
 /** Merge remote playlists into local list (remote wins on newer updatedAt). */

@@ -16,17 +16,16 @@ export function getSessionUserId(): string | null {
 }
 
 /**
- * Decide whether local library/notes should be kept when the signed-in
- * account differs from the previous ownerId.
+ * Whether on-device library/notes may be shown or uploaded for the signed-in user.
  *
- * - migrateLocal (signup / claim): always keep local and attach to the new account
- * - remote empty: keep local (guest library or recovery after server wipe)
- * - remote has data: drop previous account's local data for privacy
+ * Guest / unowned data (`previousOwnerId` null) can be claimed by signup/signin.
+ * Data already attributed to another account must never be kept or uploaded —
+ * including when the new account's cloud library is empty or unreachable.
  */
-export function shouldKeepLocalOnAccountSwitch(options: {
-  migrateLocal?: boolean;
-  remoteCount: number;
+export function shouldKeepLocalLibrary(options: {
+  previousOwnerId: string | null;
+  currentUserId: string;
 }): boolean {
-  if (options.migrateLocal) return true;
-  return options.remoteCount === 0;
+  if (!options.previousOwnerId) return true;
+  return options.previousOwnerId === options.currentUserId;
 }

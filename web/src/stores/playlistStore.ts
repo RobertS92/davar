@@ -8,12 +8,7 @@ import {
   syncPlaylistToBackend,
 } from "@/services/playlistSync";
 import { getAccessToken, isBackendConfigured } from "@/lib/api";
-import { getSessionUserId, shouldKeepLocalOnAccountSwitch } from "@/lib/sessionUser";
-
-export type HydrateOptions = {
-  /** Keep device playlists and upload them to the newly signed-up account. */
-  migrateLocal?: boolean;
-};
+import { getSessionUserId, shouldKeepLocalLibrary } from "@/lib/sessionUser";
 
 interface PlaylistState {
   playlists: Playlist[];
@@ -33,7 +28,7 @@ interface PlaylistState {
   updatePlaybackProgress: (playlistId: string, itemId: string, position: number) => void;
   markPlaylistCompleted: (id: string) => void;
   addToRecent: (id: string) => void;
-  hydrateFromBackend: (options?: HydrateOptions) => Promise<void>;
+  hydrateFromBackend: () => Promise<void>;
   setSyncStatus: (status: PlaylistState["syncStatus"]) => void;
   clearForSignOut: () => void;
 }
@@ -132,7 +127,7 @@ export const usePlaylistStore = create<PlaylistState>()(
           return { recentPlaylistIds: [id, ...filtered].slice(0, 10) };
         }),
 
-      hydrateFromBackend: async (options) => {
+      hydrateFromBackend: async () => {
         if (!canSync()) {
           set({ syncStatus: isBackendConfigured() ? "idle" : "offline" });
           return;
@@ -144,22 +139,19 @@ export const usePlaylistStore = create<PlaylistState>()(
           return;
         }
 
-        // Snapshot before any account-switch logic so signup never loses the library.
+        // Snapshot before sync so guest signup cannot lose the library on a failed request.
         const previousOwnerId = get().ownerId;
         const localPlaylists = get().playlists;
         const localRecentIds = get().recentPlaylistIds;
-        const switchingAccount = !!previousOwnerId && previousOwnerId !== userId;
+        // Guest/unowned local data may be claimed. Another account's data never is.
+        const keepLocal = shouldKeepLocalLibrary({
+          previousOwnerId,
+          currentUserId: userId,
+        });
 
         set({ ownerId: userId, syncStatus: "syncing" });
         try {
           const remote = await fetchPlaylistsFromBackend();
-          const keepLocal =
-            !switchingAccount ||
-            shouldKeepLocalOnAccountSwitch({
-              migrateLocal: options?.migrateLocal,
-              remoteCount: remote.length,
-            });
-
           const baseLocal = keepLocal ? localPlaylists : [];
           const baseRecent = keepLocal ? localRecentIds : [];
           const merged = mergePlaylists(baseLocal, remote);
@@ -170,18 +162,22 @@ export const usePlaylistStore = create<PlaylistState>()(
             syncStatus: "synced",
           });
 
-          for (const playlist of merged) {
-            const onRemote = remote.some((r) => r.id === playlist.id);
-            if (!onRemote) await syncPlaylistToBackend(playlist);
+          if (keepLocal) {
+            for (const playlist of merged) {
+              const onRemote = remote.some((r) => r.id === playlist.id);
+              if (!onRemote) await syncPlaylistToBackend(playlist);
+            }
           }
         } catch {
-          // Keep whatever was already on the device if cloud sync fails.
-          if (localPlaylists.length > 0) {
+          if (keepLocal && localPlaylists.length > 0) {
             set({
               playlists: localPlaylists,
               recentPlaylistIds: localRecentIds,
               syncStatus: "offline",
             });
+          } else if (!keepLocal) {
+            // Do not leak the previous account's library while offline.
+            set({ playlists: [], recentPlaylistIds: [], syncStatus: "offline" });
           } else {
             set({ syncStatus: "offline" });
           }

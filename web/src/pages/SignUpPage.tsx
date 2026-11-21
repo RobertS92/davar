@@ -23,11 +23,9 @@ export default function SignUpPage() {
 
   const finish = async () => {
     analytics.setUserId(useAuthStore.getState().user?.id ?? null);
-    // Always migrate device library/notes onto the new account — never wipe on signup.
-    await usePlaylistStore.getState().hydrateFromBackend({ migrateLocal: true });
-    await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null, {
-      migrateLocal: true,
-    });
+    // Guest/unowned device library is claimed; another account's data is never uploaded.
+    await usePlaylistStore.getState().hydrateFromBackend();
+    await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);
     navigate("/", { replace: true });
   };
 
