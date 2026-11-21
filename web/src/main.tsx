@@ -10,11 +10,33 @@ import { usePreferencesStore } from "@/stores/preferencesStore";
 import { applyTheme } from "@/theme/themes";
 import "./index.css";
 
+function waitForPersistHydration(store: {
+  persist: {
+    hasHydrated: () => boolean;
+    onFinishHydration: (fn: () => void) => () => void;
+  };
+}): Promise<void> {
+  if (store.persist.hasHydrated()) return Promise.resolve();
+  return new Promise((resolve) => {
+    const unsub = store.persist.onFinishHydration(() => {
+      unsub();
+      resolve();
+    });
+  });
+}
+
 function Root() {
   useEffect(() => {
     applyTheme(usePreferencesStore.getState().themeId);
     analytics.initialize();
     void (async () => {
+      // Wait so cloud hydrate cannot race an empty in-memory store and overwrite localStorage.
+      await Promise.all([
+        waitForPersistHydration(useAuthStore),
+        waitForPersistHydration(usePlaylistStore),
+        waitForPersistHydration(useStudyStore),
+        waitForPersistHydration(usePreferencesStore),
+      ]);
       await useAuthStore.getState().initialize();
       await usePlaylistStore.getState().hydrateFromBackend();
       await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);

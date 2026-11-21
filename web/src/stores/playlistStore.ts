@@ -8,6 +8,12 @@ import {
   syncPlaylistToBackend,
 } from "@/services/playlistSync";
 import { getAccessToken, isBackendConfigured } from "@/lib/api";
+import { getSessionUserId, shouldKeepLocalOnAccountSwitch } from "@/lib/sessionUser";
+
+export type HydrateOptions = {
+  /** Keep device playlists and upload them to the newly signed-up account. */
+  migrateLocal?: boolean;
+};
 
 interface PlaylistState {
   playlists: Playlist[];
@@ -27,7 +33,7 @@ interface PlaylistState {
   updatePlaybackProgress: (playlistId: string, itemId: string, position: number) => void;
   markPlaylistCompleted: (id: string) => void;
   addToRecent: (id: string) => void;
-  hydrateFromBackend: () => Promise<void>;
+  hydrateFromBackend: (options?: HydrateOptions) => Promise<void>;
   setSyncStatus: (status: PlaylistState["syncStatus"]) => void;
   clearForSignOut: () => void;
 }
@@ -53,7 +59,8 @@ export const usePlaylistStore = create<PlaylistState>()(
       syncStatus: "idle",
 
       setSyncStatus: (syncStatus) => set({ syncStatus }),
-      clearForSignOut: () => set({ playlists: [], recentPlaylistIds: [], ownerId: null, syncStatus: "idle" }),
+      clearForSignOut: () =>
+        set({ playlists: [], recentPlaylistIds: [], ownerId: null, syncStatus: "idle" }),
 
       addPlaylist: (playlist) => {
         set((state) => ({ playlists: [playlist, ...state.playlists] }));
@@ -125,24 +132,59 @@ export const usePlaylistStore = create<PlaylistState>()(
           return { recentPlaylistIds: [id, ...filtered].slice(0, 10) };
         }),
 
-      hydrateFromBackend: async () => {
+      hydrateFromBackend: async (options) => {
         if (!canSync()) {
           set({ syncStatus: isBackendConfigured() ? "idle" : "offline" });
           return;
         }
-        const userId = (() => { try { const token = getAccessToken(); if (!token) return null; const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); return String(payload.userId ?? ""); } catch { return null; } })();
-        if (get().ownerId && get().ownerId !== userId) set({ playlists: [], recentPlaylistIds: [] });
+
+        const userId = getSessionUserId();
+        if (!userId) {
+          set({ syncStatus: "offline" });
+          return;
+        }
+
+        // Snapshot before any account-switch logic so signup never loses the library.
+        const previousOwnerId = get().ownerId;
+        const localPlaylists = get().playlists;
+        const localRecentIds = get().recentPlaylistIds;
+        const switchingAccount = !!previousOwnerId && previousOwnerId !== userId;
+
         set({ ownerId: userId, syncStatus: "syncing" });
         try {
           const remote = await fetchPlaylistsFromBackend();
-          const merged = mergePlaylists(get().playlists, remote);
-          set({ playlists: merged, syncStatus: "synced" });
+          const keepLocal =
+            !switchingAccount ||
+            shouldKeepLocalOnAccountSwitch({
+              migrateLocal: options?.migrateLocal,
+              remoteCount: remote.length,
+            });
+
+          const baseLocal = keepLocal ? localPlaylists : [];
+          const baseRecent = keepLocal ? localRecentIds : [];
+          const merged = mergePlaylists(baseLocal, remote);
+
+          set({
+            playlists: merged,
+            recentPlaylistIds: baseRecent.filter((id) => merged.some((p) => p.id === id)),
+            syncStatus: "synced",
+          });
+
           for (const playlist of merged) {
             const onRemote = remote.some((r) => r.id === playlist.id);
             if (!onRemote) await syncPlaylistToBackend(playlist);
           }
         } catch {
-          set({ syncStatus: "offline" });
+          // Keep whatever was already on the device if cloud sync fails.
+          if (localPlaylists.length > 0) {
+            set({
+              playlists: localPlaylists,
+              recentPlaylistIds: localRecentIds,
+              syncStatus: "offline",
+            });
+          } else {
+            set({ syncStatus: "offline" });
+          }
         }
       },
     }),
