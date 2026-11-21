@@ -20,19 +20,37 @@ const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'data', 'script
 let db;
 
 // CORS: reflect request Origin when CORS_ORIGIN unset; otherwise allow listed hosts
+// plus Vercel preview deployments (*.vercel.app) so PR/preview sign-in is not blocked.
 const corsOrigin = process.env.CORS_ORIGIN;
+const configuredOrigins = corsOrigin
+  ? corsOrigin.split(',').map((s) => s.trim()).filter(Boolean)
+  : [];
+
+function isAllowedCorsOrigin(origin) {
+  if (!origin) return false;
+  if (!configuredOrigins.length) return true;
+  if (configuredOrigins.includes(origin)) return true;
+  if (configuredOrigins.includes('*')) return true;
+  try {
+    const { hostname } = new URL(origin);
+    // Production + preview apps on Vercel share the same Railway API.
+    if (hostname === 'vercel.app' || hostname.endsWith('.vercel.app')) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 app.use(
-  cors(
-    corsOrigin
-      ? {
-          origin: corsOrigin.split(',').map((s) => s.trim()),
-          credentials: true,
-        }
-      : {
-          origin: true,
-          credentials: true,
-        }
-  )
+  cors({
+    origin(origin, callback) {
+      // Non-browser tools (curl, healthchecks) send no Origin — allow.
+      if (!origin) return callback(null, true);
+      if (isAllowedCorsOrigin(origin)) return callback(null, true);
+      return callback(null, false);
+    },
+    credentials: true,
+  })
 );
 app.options('*', cors());
 app.use(express.json({ limit: '2mb' }));

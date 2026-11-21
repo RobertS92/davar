@@ -52,6 +52,23 @@ export function clearTokens(): void {
   localStorage.removeItem(REFRESH_KEY);
 }
 
+function friendlyNetworkError(err: unknown): Error {
+  const raw = err instanceof Error ? err.message : String(err || "");
+  const lower = raw.toLowerCase();
+  if (
+    err instanceof TypeError ||
+    lower.includes("load failed") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("networkerror") ||
+    lower.includes("network request failed")
+  ) {
+    return new Error(
+      "Could not reach the server. Check your connection and try again. If this keeps happening, the API may be blocking this site address."
+    );
+  }
+  return err instanceof Error ? err : new Error(raw || "Request failed");
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit & { auth?: boolean } = {}
@@ -66,10 +83,15 @@ export async function apiFetch<T>(
     if (token) finalHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(apiUrl(path), {
-    ...rest,
-    headers: finalHeaders,
-  });
+  let response: Response;
+  try {
+    response = await fetch(apiUrl(path), {
+      ...rest,
+      headers: finalHeaders,
+    });
+  } catch (err) {
+    throw friendlyNetworkError(err);
+  }
 
   const contentType = response.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");

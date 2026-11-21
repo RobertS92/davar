@@ -17,7 +17,7 @@ Users can **Sign in**, **Sign up**, or **Continue without an account**. No prici
 |----------|----------|-------|
 | `JWT_SECRET` | yes | Long random string |
 | `OPENAI_API_KEY` | yes for AI/TTS | Server-only |
-| `CORS_ORIGIN` | recommended | Your Vercel URL, e.g. `https://davar.vercel.app` |
+| `CORS_ORIGIN` | recommended | Production Vercel URL(s), comma-separated. Preview `*.vercel.app` hosts are allowed automatically by the backend. |
 | `DATABASE_PATH` | recommended | e.g. `/data/scripture.db` with a Railway volume mounted at `/data` |
 | `PORT` | auto | Railway sets this |
 

@@ -8,6 +8,7 @@ import {
   syncPlaylistToBackend,
 } from "@/services/playlistSync";
 import { getAccessToken, isBackendConfigured } from "@/lib/api";
+import { getSessionUserId, shouldKeepLocalLibrary } from "@/lib/sessionUser";
 
 interface PlaylistState {
   playlists: Playlist[];
@@ -53,7 +54,8 @@ export const usePlaylistStore = create<PlaylistState>()(
       syncStatus: "idle",
 
       setSyncStatus: (syncStatus) => set({ syncStatus }),
-      clearForSignOut: () => set({ playlists: [], recentPlaylistIds: [], ownerId: null, syncStatus: "idle" }),
+      clearForSignOut: () =>
+        set({ playlists: [], recentPlaylistIds: [], ownerId: null, syncStatus: "idle" }),
 
       addPlaylist: (playlist) => {
         set((state) => ({ playlists: [playlist, ...state.playlists] }));
@@ -130,19 +132,55 @@ export const usePlaylistStore = create<PlaylistState>()(
           set({ syncStatus: isBackendConfigured() ? "idle" : "offline" });
           return;
         }
-        const userId = (() => { try { const token = getAccessToken(); if (!token) return null; const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); return String(payload.userId ?? ""); } catch { return null; } })();
-        if (get().ownerId && get().ownerId !== userId) set({ playlists: [], recentPlaylistIds: [] });
+
+        const userId = getSessionUserId();
+        if (!userId) {
+          set({ syncStatus: "offline" });
+          return;
+        }
+
+        // Snapshot before sync so guest signup cannot lose the library on a failed request.
+        const previousOwnerId = get().ownerId;
+        const localPlaylists = get().playlists;
+        const localRecentIds = get().recentPlaylistIds;
+        // Guest/unowned local data may be claimed. Another account's data never is.
+        const keepLocal = shouldKeepLocalLibrary({
+          previousOwnerId,
+          currentUserId: userId,
+        });
+
         set({ ownerId: userId, syncStatus: "syncing" });
         try {
           const remote = await fetchPlaylistsFromBackend();
-          const merged = mergePlaylists(get().playlists, remote);
-          set({ playlists: merged, syncStatus: "synced" });
-          for (const playlist of merged) {
-            const onRemote = remote.some((r) => r.id === playlist.id);
-            if (!onRemote) await syncPlaylistToBackend(playlist);
+          const baseLocal = keepLocal ? localPlaylists : [];
+          const baseRecent = keepLocal ? localRecentIds : [];
+          const merged = mergePlaylists(baseLocal, remote);
+
+          set({
+            playlists: merged,
+            recentPlaylistIds: baseRecent.filter((id) => merged.some((p) => p.id === id)),
+            syncStatus: "synced",
+          });
+
+          if (keepLocal) {
+            for (const playlist of merged) {
+              const onRemote = remote.some((r) => r.id === playlist.id);
+              if (!onRemote) await syncPlaylistToBackend(playlist);
+            }
           }
         } catch {
-          set({ syncStatus: "offline" });
+          if (keepLocal && localPlaylists.length > 0) {
+            set({
+              playlists: localPlaylists,
+              recentPlaylistIds: localRecentIds,
+              syncStatus: "offline",
+            });
+          } else if (!keepLocal) {
+            // Do not leak the previous account's library while offline.
+            set({ playlists: [], recentPlaylistIds: [], syncStatus: "offline" });
+          } else {
+            set({ syncStatus: "offline" });
+          }
         }
       },
     }),

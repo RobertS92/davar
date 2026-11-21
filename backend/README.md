@@ -27,7 +27,7 @@ Server: `http://localhost:3000` · Health: `GET /health`
 |----------|----------|-------|
 | `JWT_SECRET` | yes (prod) | Sign access/refresh tokens |
 | `OPENAI_API_KEY` | for AI/TTS | Also accepts `EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY` |
-| `CORS_ORIGIN` | recommended | Comma-separated Vercel + local origins |
+| `CORS_ORIGIN` | recommended | Comma-separated production origins (e.g. Vercel + localhost). All `*.vercel.app` preview hosts are allowed automatically. |
 | `DATABASE_PATH` | recommended | e.g. `/data/scripture.db` with a volume at `/data` |
 | `PORT` | auto | Railway injects this |
 

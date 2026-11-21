@@ -23,8 +23,13 @@ export default function SignUpPage() {
 
   const finish = async () => {
     analytics.setUserId(useAuthStore.getState().user?.id ?? null);
-    await usePlaylistStore.getState().hydrateFromBackend();
-    await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);
+    try {
+      // Guest/unowned device library is claimed; another account's data is never uploaded.
+      await usePlaylistStore.getState().hydrateFromBackend();
+      await useStudyStore.getState().hydrate(useAuthStore.getState().user?.id ?? null);
+    } catch {
+      // Auth already succeeded — do not block entry if library sync is offline.
+    }
     navigate("/", { replace: true });
   };
 
